@@ -291,12 +291,17 @@ begin
   if new.user_id <> old.user_id or new.display_id <> old.display_id or new.created_at <> old.created_at then
     raise exception 'Record ownership and generated IDs cannot be changed';
   end if;
-  if tg_table_name = 'agreements' and (new.property_id <> old.property_id or new.tenant_id <> old.tenant_id) then
-    raise exception 'An agreement tenant and property cannot be rewritten';
-  elsif tg_table_name = 'rent_receipts' and (
-    new.rent_period_id <> old.rent_period_id or new.collection_date <> old.collection_date or
-    new.amount <> old.amount or new.payment_method_id is distinct from old.payment_method_id
-  ) then raise exception 'A saved receipt is immutable; void it and create a correction instead';
+  if tg_table_name = 'agreements' then
+    if new.property_id <> old.property_id or new.tenant_id <> old.tenant_id then
+      raise exception 'An agreement tenant and property cannot be rewritten';
+    end if;
+    return new;
+  end if;
+  if tg_table_name = 'rent_receipts' then
+    if new.rent_period_id <> old.rent_period_id or new.collection_date <> old.collection_date or
+       new.amount <> old.amount or new.payment_method_id is distinct from old.payment_method_id then
+      raise exception 'A saved receipt is immutable; void it and create a correction instead';
+    end if;
   end if;
   return new;
 end;
@@ -800,6 +805,22 @@ using (public.current_user_is_admin()) with check (public.current_user_is_admin(
 drop policy if exists admin_audit_read on public.admin_audit_logs;
 create policy admin_audit_read on public.admin_audit_logs for select to authenticated using (public.current_user_is_admin());
 
+-- New Supabase projects may revoke schema privileges by default. RLS policies
+-- still decide which rows are visible, while these grants allow authenticated
+-- application users to reach the tables and transactional RPC functions.
+grant usage on schema public to authenticated, service_role;
+revoke all on all tables in schema public from anon;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant all privileges on all tables in schema public to service_role;
+grant usage, select on all sequences in schema public to authenticated, service_role;
+grant execute on all functions in schema public to authenticated, service_role;
+
+alter default privileges in schema public revoke all on tables from anon;
+alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;
+alter default privileges in schema public grant all privileges on tables to service_role;
+alter default privileges in schema public grant usage, select on sequences to authenticated, service_role;
+alter default privileges in schema public grant execute on functions to authenticated, service_role;
+
 insert into storage.buckets(id, name, public, file_size_limit, allowed_mime_types)
 values ('rentwise-private','rentwise-private',false,10485760,array['image/jpeg','image/png','image/webp','application/pdf'])
 on conflict(id) do nothing;
@@ -817,5 +838,112 @@ with check (bucket_id = 'rentwise-private' and (storage.foldername(name))[1] = a
 drop policy if exists rentwise_storage_delete on storage.objects;
 create policy rentwise_storage_delete on storage.objects for delete to authenticated
 using (bucket_id = 'rentwise-private' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- These triggers serve tables with different row shapes. Keep each table's
+-- field references in a separate executed branch so PostgreSQL never resolves
+-- a field that does not exist on the current trigger record.
+create or replace function public.protect_record_identity()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if new.user_id <> old.user_id or new.display_id <> old.display_id or new.created_at <> old.created_at then
+    raise exception 'Record ownership and generated IDs cannot be changed';
+  end if;
+  if tg_table_name = 'agreements' then
+    if new.property_id <> old.property_id or new.tenant_id <> old.tenant_id then
+      raise exception 'An agreement tenant and property cannot be rewritten';
+    end if;
+    return new;
+  end if;
+  if tg_table_name = 'rent_receipts' then
+    if new.rent_period_id <> old.rent_period_id or new.collection_date <> old.collection_date or
+       new.amount <> old.amount or new.payment_method_id is distinct from old.payment_method_id then
+      raise exception 'A saved receipt is immutable; void it and create a correction instead';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create or replace function public.enforce_account_relationships()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if tg_table_name = 'properties' then
+    if new.property_type_id is not null and not exists (
+      select 1 from public.property_types x where x.id = new.property_type_id and x.user_id = new.user_id
+    ) then raise exception 'Property type belongs to another account'; end if;
+    return new;
+  end if;
+  if tg_table_name = 'agreements' then
+    if not exists (select 1 from public.properties x where x.id = new.property_id and x.user_id = new.user_id)
+       or not exists (select 1 from public.tenants x where x.id = new.tenant_id and x.user_id = new.user_id)
+    then raise exception 'Agreement references another account'; end if;
+    return new;
+  end if;
+  if tg_table_name = 'rent_increments' then
+    if not exists (select 1 from public.agreements x where x.id = new.agreement_id and x.user_id = new.user_id)
+    then raise exception 'Agreement belongs to another account'; end if;
+    return new;
+  end if;
+  if tg_table_name = 'rent_periods' then
+    if not exists (select 1 from public.agreements x where x.id = new.agreement_id and x.user_id = new.user_id)
+    then raise exception 'Agreement belongs to another account'; end if;
+    return new;
+  end if;
+  if tg_table_name = 'rent_charges' then
+    if not exists (select 1 from public.rent_periods x where x.id = new.rent_period_id and x.user_id = new.user_id)
+    then raise exception 'Rent period belongs to another account'; end if;
+    return new;
+  end if;
+  if tg_table_name = 'rent_receipts' then
+    if not exists (select 1 from public.rent_periods x where x.id = new.rent_period_id and x.user_id = new.user_id)
+       or (new.payment_method_id is not null and not exists (
+         select 1 from public.payment_methods x where x.id = new.payment_method_id and x.user_id = new.user_id
+       ))
+    then raise exception 'Receipt references another account'; end if;
+    return new;
+  end if;
+  if tg_table_name = 'expenses' then
+    if new.category_id is not null and not exists (
+      select 1 from public.expense_categories x where x.id = new.category_id and x.user_id = new.user_id
+    ) then raise exception 'Expense category belongs to another account'; end if;
+    return new;
+  end if;
+  if tg_table_name = 'expense_allocations' then
+    if not exists (select 1 from public.expenses x where x.id = new.expense_id and x.user_id = new.user_id)
+       or not exists (select 1 from public.properties x where x.id = new.property_id and x.user_id = new.user_id)
+    then raise exception 'Expense allocation references another account'; end if;
+    return new;
+  end if;
+  if tg_table_name = 'attachments' then
+    if not (
+      (new.entity_type = 'tenant' and exists (select 1 from public.tenants x where x.id = new.entity_id and x.user_id = new.user_id)) or
+      (new.entity_type = 'property' and exists (select 1 from public.properties x where x.id = new.entity_id and x.user_id = new.user_id)) or
+      (new.entity_type = 'agreement' and exists (select 1 from public.agreements x where x.id = new.entity_id and x.user_id = new.user_id)) or
+      (new.entity_type = 'receipt' and exists (select 1 from public.rent_receipts x where x.id = new.entity_id and x.user_id = new.user_id)) or
+      (new.entity_type = 'expense' and exists (select 1 from public.expenses x where x.id = new.entity_id and x.user_id = new.user_id))
+    ) then raise exception 'Attachment target belongs to another account'; end if;
+  end if;
+  return new;
+end;
+$$;
+
+create or replace function public.prevent_used_record_delete()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if tg_table_name = 'properties' then
+    if exists (select 1 from public.agreements x where x.property_id = old.id) or
+       exists (select 1 from public.expense_allocations x where x.property_id = old.id) or
+       exists (select 1 from public.attachments x where x.entity_type = 'property' and x.entity_id = old.id)
+    then raise exception 'A property connected to another record cannot be deleted'; end if;
+    return old;
+  end if;
+  if tg_table_name = 'tenants' then
+    if exists (select 1 from public.agreements x where x.tenant_id = old.id) or
+       exists (select 1 from public.attachments x where x.entity_type = 'tenant' and x.entity_id = old.id)
+    then raise exception 'A tenant connected to another record cannot be deleted'; end if;
+  end if;
+  return old;
+end;
+$$;
 
 select pg_catalog.set_config('search_path', '', false);

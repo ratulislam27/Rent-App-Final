@@ -182,7 +182,7 @@ function Toast({ message }: { message: string }) {
 }
 
 function LoadingScreen() {
-  return <main className="loading-screen"><div className="brand-mark"><Building2 size={22} /></div><LoaderCircle className="spin" size={24} /><span>Preparing your workspace</span></main>;
+  return <main className="loading-screen"><strong className="loading-wordmark">Rentwise</strong><LoaderCircle className="spin" size={24} /><span>Preparing your workspace</span></main>;
 }
 
 function AuthScreen({ service, theme, onToggleTheme, onDemo, onAuthenticated }: { service: RentwiseDataService; theme: ResolvedTheme; onToggleTheme: () => void; onDemo: () => void; onAuthenticated: (user: User) => void }) {
@@ -227,7 +227,7 @@ function AuthScreen({ service, theme, onToggleTheme, onDemo, onAuthenticated }: 
   return <main className="auth-page">
     <AppearanceToggle theme={theme} onToggle={onToggleTheme} className="auth-theme-toggle" />
     <section className="auth-intro">
-      <div className="brand-lockup"><span className="brand-mark"><Building2 size={21} /></span><span>Rentwise</span></div>
+      <div className="brand-lockup">Rentwise</div>
       <div className="auth-copy"><p className="eyebrow">Landlord workspace</p><h1>Rental management, without the clutter.</h1><p>Keep properties, tenants, agreements, rent receipts and expenses organized in one private workspace.</p></div>
       <div className="auth-points"><span><CircleCheck size={17} />Clear monthly balances</span><span><ShieldCheck size={17} />Private account data</span><span><FileDown size={17} />Printable receipts and reports</span></div>
     </section>
@@ -261,7 +261,7 @@ const navItems: Array<{ route: MainRoute; label: string; icon: LucideIcon }> = [
 function Navigation({ route, onNavigate }: { route: Route; onNavigate: (route: Route) => void }) {
   return <>
     <aside className="desktop-nav">
-      <div className="brand-lockup"><span className="brand-mark"><Building2 size={20} /></span><span>Rentwise</span></div>
+      <div className="brand-lockup">Rentwise</div>
       <nav aria-label="Main navigation">
         {navItems.map(({ route: itemRoute, label, icon: Icon }) => <button key={itemRoute} className={cn("nav-item", route === itemRoute && "is-active")} type="button" onClick={() => onNavigate(itemRoute)}><Icon size={19} strokeWidth={1.8} /><span>{label}</span></button>)}
         <div className="nav-divider" />
@@ -282,7 +282,7 @@ function AppearanceToggle({ theme, onToggle, className }: { theme: ResolvedTheme
 function AppHeader({ workspace, route, theme, onToggleTheme, onSettings, onAdmin, onSignOut }: { workspace: WorkspaceData; route: Route; theme: ResolvedTheme; onToggleTheme: () => void; onSettings: () => void; onAdmin: () => void; onSignOut: () => void }) {
   const titleMap: Record<Route, string> = { home: "Home", properties: "Properties", tenants: "Tenants", collections: "Collections", more: "More", agreements: "Agreements", expenses: "Expenses", reports: "Reports", settings: "Settings", admin: "Administrator" };
   const [menuOpen, setMenuOpen] = useState(false);
-  return <header className="app-header"><div className="mobile-brand"><span className="brand-mark"><Building2 size={18} /></span><span>{titleMap[route]}</span></div><div className="desktop-page-title">{titleMap[route]}</div><div className="header-controls"><AppearanceToggle theme={theme} onToggle={onToggleTheme} /><div className="account-menu-wrap"><button className="account-button" type="button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen}><span className="avatar">{initials(workspace.profile.full_name)}</span><span className="account-copy"><strong>{workspace.profile.full_name}</strong><small>{workspace.profile.email}</small></span><ChevronRight className={menuOpen ? "rotate-90" : ""} size={16} /></button>{menuOpen && <div className="account-popover"><button type="button" onClick={() => { setMenuOpen(false); onSettings(); }}><Settings size={17} />Settings</button>{workspace.profile.is_admin && <button type="button" onClick={() => { setMenuOpen(false); onAdmin(); }}><ShieldCheck size={17} />Administrator</button>}<button type="button" onClick={onSignOut}><LogOut size={17} />Sign out</button></div>}</div></div></header>;
+  return <header className="app-header"><div className="mobile-brand">{titleMap[route]}</div><div className="desktop-page-title">{titleMap[route]}</div><div className="header-controls"><AppearanceToggle theme={theme} onToggle={onToggleTheme} /><div className="account-menu-wrap"><button className="account-button" type="button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen}><span className="avatar">{initials(workspace.profile.full_name)}</span><span className="account-copy"><strong>{workspace.profile.full_name}</strong><small>{workspace.profile.email}</small></span><ChevronRight className={menuOpen ? "rotate-90" : ""} size={16} /></button>{menuOpen && <div className="account-popover"><button type="button" onClick={() => { setMenuOpen(false); onSettings(); }}><Settings size={17} />Settings</button>{workspace.profile.is_admin && <button type="button" onClick={() => { setMenuOpen(false); onAdmin(); }}><ShieldCheck size={17} />Administrator</button>}<button type="button" onClick={onSignOut}><LogOut size={17} />Sign out</button></div>}</div></div></header>;
 }
 
 export default function RentwiseApp() {
@@ -634,7 +634,7 @@ function ReceiptDetail({ workspace, id, setConfirm, service, refresh, notify }: 
   return <><PageHeading eyebrow={receipt.display_id} title="Rent receipt" subtitle={receipt.status === "void" ? "This receipt has been voided." : `Received ${formatDate(receipt.collection_date)}`} action={<div className="heading-actions"><button className="button button-secondary no-print" type="button" onClick={() => window.print()}><Printer size={16} />Print</button><button className="button button-primary no-print" type="button" onClick={() => void share()}><Share2 size={16} />Share</button></div>} />
     <article className={cn("receipt-paper", receipt.status === "void" && "is-void") }>
       {receipt.status === "void" && <div className="void-watermark">VOID</div>}
-      <header className="receipt-header"><div className="brand-lockup"><span className="brand-mark"><Building2 size={19} /></span><span>{workspace.settings.receipt_name || workspace.profile.full_name}</span></div><div><strong>RENT RECEIPT</strong><span>{receipt.display_id}</span></div></header>
+      <header className="receipt-header"><div className="brand-lockup">{workspace.settings.receipt_name || workspace.profile.full_name}</div><div><strong>RENT RECEIPT</strong><span>{receipt.display_id}</span></div></header>
       <div className="receipt-party"><div><span>Received from</span><strong>{tenant?.name}</strong><small>{tenant?.display_id} · {tenant?.phone}</small></div><div><span>For property</span><strong>{property?.name}</strong><small>{property?.display_id} · {agreement?.display_id}</small></div></div>
       <div className="receipt-lines"><div><span>Rent period</span><strong>{monthLabel(period?.rent_month ?? currentMonthStart)}</strong></div><div><span>Base rent</span><strong>{formatMoney(period?.base_rent ?? 0, workspace.settings.currency_symbol)}</strong></div>{charges.map((charge) => <div key={charge.id}><span>{charge.reason}</span><strong>{formatMoney(charge.amount, workspace.settings.currency_symbol)}</strong></div>)}<div><span>Payment method</span><strong>{method?.name ?? "Not recorded"}</strong></div><div><span>Collection date</span><strong>{formatDate(receipt.collection_date)}</strong></div><div className="receipt-total"><span>Amount received</span><strong>{formatMoney(receipt.amount, workspace.settings.currency_symbol)}</strong></div></div>
       <footer className="receipt-footer"><span>{workspace.settings.receipt_phone}</span><span>{workspace.settings.receipt_address}</span>{receipt.notes && <p>{receipt.notes}</p>}</footer>

@@ -6,8 +6,11 @@ const output = fileURLToPath(new URL("../public/og.png", import.meta.url));
 
 const overlay = Buffer.from(`
 <svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
-  <rect x="76" y="88" width="46" height="46" rx="9" fill="#1265e8"/>
-  <path d="M89 119V103h20v16M95 119v-10h8v10M86 119h26" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <g transform="translate(76 88) scale(.71875)">
+    <rect width="64" height="64" rx="14" fill="#f7f8fa" stroke="#dde0e5" stroke-width="1.4"/>
+    <path d="M21 46V18.5h12.25c6.5 0 10.75 3.85 10.75 9.75S39.75 38 33.25 38H21M33.5 38 44.5 46.5" fill="none" stroke="#1d2a3d" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="45" cy="18.5" r="1.8" fill="#3478e5"/>
+  </g>
   <text x="140" y="122" fill="#17191d" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" letter-spacing="-1.2">Rentwise</text>
   <text x="76" y="255" fill="#17191d" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700" letter-spacing="-2.5">
     <tspan x="76" dy="0">Rental management,</tspan>

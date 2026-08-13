@@ -20,7 +20,7 @@ test("server-renders the Rentwise application shell", async () => {
   const html = await response.text();
   assert.match(html, /<title>Rentwise/);
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon\.png/);
+  assert.match(html, /apple-touch-icon-v2\.png/);
   assert.doesNotMatch(html, /Your site is taking shape|SkeletonPreview|react-loading-skeleton/);
 });
 
@@ -47,10 +47,13 @@ test("mobile design keeps restrained geometry, fixed navigation, themes and redu
   assert.match(css, /\.theme-options/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(app, /rentwise-theme/);
+  assert.match(app, /<div className="mobile-brand">\{titleMap\[route\]\}<\/div>/);
+  assert.doesNotMatch(app, /<div className="mobile-brand"><span className="brand-mark"/);
   assert.match(app, /"light", "Light", Sun/);
   assert.match(app, /"system", "System", Monitor/);
   assert.match(layout, /themeBootScript/);
   assert.match(manifest, /display:\s*"standalone"/);
+  assert.match(manifest, /icon-512-v2\.png/);
   assert.match(manifest, /purpose:\s*"maskable"/);
 });
 

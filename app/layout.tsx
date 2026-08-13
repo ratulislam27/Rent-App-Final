@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Rentwise" },
   formatDetection: { telephone: false },
-  icons: { icon: "/favicon.svg", shortcut: "/favicon.svg", apple: "/apple-touch-icon.png" },
+  icons: { icon: "/favicon.svg?v=2", shortcut: "/favicon.svg?v=2", apple: "/apple-touch-icon-v2.png" },
   openGraph: {
     type: "website",
     title: "Rentwise — Rental management, made clear",

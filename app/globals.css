@@ -320,6 +320,14 @@ button.record-row:hover { background: var(--surface-soft); }
 .allocation-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: start; gap: 7px; margin-bottom: 8px; }
 .allocation-row:has(input) { grid-template-columns: minmax(0, 1fr) minmax(88px, .55fr) 44px; }
 .allocation-mode { width: fit-content; margin: 12px 0 15px; }
+.payment-allocation-list { overflow: hidden; margin-bottom: 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.payment-allocation-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(104px, .42fr); align-items: center; gap: 12px; min-height: 66px; padding: 10px 11px; border-bottom: 1px solid var(--line); }
+.payment-allocation-row:last-child { border-bottom: 0; }
+.payment-allocation-row > span { min-width: 0; }
+.payment-allocation-row strong, .payment-allocation-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.payment-allocation-row strong { font-size: 12px; }
+.payment-allocation-row small { margin-top: 4px; color: var(--text-soft); font-size: 10px; }
+.payment-allocation-row input { text-align: right; }
 .inline-add { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 15px; }
 .lookup-list { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-sm); }
 .lookup-list > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 52px; border-bottom: 1px solid var(--line); padding: 9px 11px; }

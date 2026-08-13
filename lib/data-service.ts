@@ -4,7 +4,7 @@ import type {
   Agreement,
   AdminUser,
   Attachment,
-  CreateReceiptInput,
+  CreateRentPaymentInput,
   Expense,
   ExpenseAllocation,
   LookupOption,
@@ -13,6 +13,7 @@ import type {
   RentCharge,
   RentIncrement,
   RentPeriod,
+  RentPaymentAllocation,
   RentReceipt,
   Tenant,
   UserSettings,
@@ -64,6 +65,8 @@ export class RentwiseDataService {
 
   async loadWorkspace(user: User | null): Promise<WorkspaceData> {
     if (!this.client || !user) return structuredClone(this.demo ?? cloneDemoWorkspace());
+    const ensured = await this.client.rpc("ensure_rent_bills");
+    if (ensured.error) throw ensured.error;
     const tables = [
       "property_types",
       "payment_methods",
@@ -75,6 +78,7 @@ export class RentwiseDataService {
       "rent_periods",
       "rent_charges",
       "rent_receipts",
+      "rent_payment_allocations",
       "expenses",
       "expense_allocations",
       "attachments",
@@ -86,7 +90,7 @@ export class RentwiseDataService {
     ]);
     const failed = [profileResult, settingsResult, ...results].find((result) => result.error);
     if (failed?.error) throw failed.error;
-    const [propertyTypes, paymentMethods, expenseCategories, properties, tenants, agreements, increments, rentPeriods, rentCharges, receipts, expenses, allocations, attachments] = results.map((result) => result.data ?? []);
+    const [propertyTypes, paymentMethods, expenseCategories, properties, tenants, agreements, increments, rentPeriods, rentCharges, receipts, paymentAllocations, expenses, allocations, attachments] = results.map((result) => result.data ?? []);
     if (!profileResult.data || !settingsResult.data) throw new Error("Your account profile is not ready yet. Please sign out and try again.");
     const typedAgreements = coerceNumbers(agreements as Agreement[]);
     const currentDate = new Date().toISOString().slice(0, 10);
@@ -111,6 +115,7 @@ export class RentwiseDataService {
       rentPeriods: coerceNumbers(rentPeriods as RentPeriod[]),
       rentCharges: coerceNumbers(rentCharges as RentCharge[]),
       receipts: coerceNumbers(receipts as RentReceipt[]),
+      paymentAllocations: coerceNumbers(paymentAllocations as RentPaymentAllocation[]),
       expenses: coerceNumbers(expenses as Expense[]),
       allocations: coerceNumbers(allocations as ExpenseAllocation[]),
       attachments: attachments as Attachment[],
@@ -252,20 +257,17 @@ export class RentwiseDataService {
     this.requireDemo().increments.push({ ...values, id: temporaryId("increment"), user_id: userId, created_at: new Date().toISOString() });
   }
 
-  async createReceipt(userId: string, input: CreateReceiptInput): Promise<RentReceipt> {
-    const rentMonth = `${input.rentMonth.slice(0, 7)}-01`;
+  async createRentPayment(userId: string, input: CreateRentPaymentInput): Promise<RentReceipt> {
     if (this.client) {
-      const { data, error } = await this.client.rpc("record_rent_collection", {
+      const { data, error } = await this.client.rpc("record_rent_payment", {
         p_request_key: input.requestKey,
         p_agreement_id: input.agreementId,
-        p_rent_month: rentMonth,
-        p_base_rent: input.baseRent,
         p_collection_date: input.collectionDate,
         p_amount: input.amount,
         p_payment_method_id: input.paymentMethodId,
         p_collected_by: input.collectedBy,
         p_notes: input.notes,
-        p_charges: input.charges,
+        p_allocations: input.allocations.map((item) => ({ rent_period_id: item.rentPeriodId, amount: item.amount })),
       });
       if (error) throw error;
       return coerceNumbers([data as RentReceipt])[0];
@@ -274,29 +276,43 @@ export class RentwiseDataService {
     const priorReceipt = workspace.receipts.find((entry) => entry.request_key === input.requestKey);
     if (priorReceipt) return priorReceipt;
     const now = new Date().toISOString();
-    let period = workspace.rentPeriods.find((entry) => entry.agreement_id === input.agreementId && entry.rent_month === rentMonth);
-    if (!period) {
-      period = { id: temporaryId("period"), user_id: userId, agreement_id: input.agreementId, rent_month: rentMonth, base_rent: input.baseRent, created_at: now, updated_at: now };
-      workspace.rentPeriods.push(period);
-    }
-    workspace.rentCharges.push(...input.charges.map((charge) => ({ id: temporaryId("charge"), user_id: userId, rent_period_id: period!.id, reason: charge.reason, amount: charge.amount, created_at: now })));
+    const allocationTotal = input.allocations.reduce((sum, item) => sum + item.amount, 0);
+    const primaryBill = input.allocations[0]?.rentPeriodId ?? null;
     const receipt: RentReceipt = {
-      id: temporaryId("receipt"), user_id: userId, display_id: nextDisplayId("RCV", workspace.receipts, 6), request_key: input.requestKey, rent_period_id: period.id,
-      collection_date: input.collectionDate, amount: input.amount, payment_method_id: input.paymentMethodId,
+      id: temporaryId("receipt"), user_id: userId, display_id: nextDisplayId("RCV", workspace.receipts, 6), request_key: input.requestKey,
+      agreement_id: input.agreementId, rent_period_id: primaryBill, collection_date: input.collectionDate, amount: input.amount,
+      unallocated_amount: Math.max(0, input.amount - allocationTotal), payment_method_id: input.paymentMethodId,
       collected_by: input.collectedBy || null, notes: input.notes, status: "valid", void_reason: null, voided_at: null,
       created_at: now, updated_at: now,
     };
     workspace.receipts.push(receipt);
+    workspace.paymentAllocations.push(...input.allocations.filter((item) => item.amount > 0).map((item) => ({
+      id: temporaryId("payment-allocation"), user_id: userId, receipt_id: receipt.id,
+      rent_period_id: item.rentPeriodId, allocated_amount: item.amount, created_at: now,
+    })));
     return receipt;
   }
 
-  async voidReceipt(id: string, reason: string) {
-    const values = { status: "void", void_reason: reason, voided_at: new Date().toISOString() };
+  async addRentBillCharge(userId: string, rentPeriodId: string, reason: string, amount: number) {
     if (this.client) {
-      const { error } = await this.client.from("rent_receipts").update(values).eq("id", id);
+      const { error } = await this.client.rpc("add_rent_bill_charge", {
+        p_rent_period_id: rentPeriodId,
+        p_reason: reason,
+        p_amount: amount,
+      });
       if (error) throw error;
       return;
     }
+    this.requireDemo().rentCharges.push({ id: temporaryId("charge"), user_id: userId, rent_period_id: rentPeriodId, reason, amount, created_at: new Date().toISOString() });
+  }
+
+  async voidReceipt(id: string, reason: string) {
+    if (this.client) {
+      const { error } = await this.client.rpc("void_rent_receipt", { p_receipt_id: id, p_reason: reason });
+      if (error) throw error;
+      return;
+    }
+    const values = { status: "void" as const, void_reason: reason, voided_at: new Date().toISOString() };
     const item = this.requireDemo().receipts.find((entry) => entry.id === id);
     if (item) Object.assign(item, values);
   }
@@ -405,7 +421,7 @@ export class RentwiseDataService {
   }
 
   exportBackup(workspace: WorkspaceData) {
-    return JSON.stringify({ product: "Rentwise", version: 1, exportedAt: new Date().toISOString(), data: workspace }, null, 2);
+    return JSON.stringify({ product: "Rentwise", version: 2, exportedAt: new Date().toISOString(), data: workspace }, null, 2);
   }
 
   async restoreBackup(data: WorkspaceData, confirmation: string) {
@@ -435,40 +451,51 @@ export function agreementStatus(agreement: Agreement, today = "2026-08-13"): "up
   return "active";
 }
 
-export function periodBalance(workspace: WorkspaceData, agreementId: string, beforeMonth?: string) {
-  const agreement = workspace.agreements.find((item) => item.id === agreementId);
-  if (!agreement) return 0;
-  const moveMonth = (month: string, offset: number) => {
-    const [year, monthNumber] = month.slice(0, 7).split("-").map(Number);
-    return new Date(Date.UTC(year, monthNumber - 1 + offset, 1)).toISOString().slice(0, 7);
-  };
-  const currentCollectionMonth = new Date().toISOString().slice(0, 7);
-  const agreementLastMonth = (agreement.terminated_on ?? agreement.end_date).slice(0, 7);
-  const requestedLastMonth = beforeMonth
-    ? moveMonth(beforeMonth, -1)
-    : moveMonth(currentCollectionMonth, -agreement.collection_offset);
-  const lastMonth = requestedLastMonth < agreementLastMonth ? requestedLastMonth : agreementLastMonth;
-  let cursor = agreement.start_date.slice(0, 7);
-  let obligations = 0;
-  for (let guard = 0; cursor <= lastMonth && guard < 1200; guard += 1) {
-    const normalized = `${cursor}-01`;
-    const recorded = workspace.rentPeriods.find((period) => period.agreement_id === agreementId && period.rent_month === normalized);
-    obligations += recorded?.base_rent ?? rentForMonth(agreement, workspace.increments, cursor);
-    cursor = moveMonth(cursor, 1);
-  }
-  const duePeriodIds = workspace.rentPeriods
-    .filter((period) => period.agreement_id === agreementId && period.rent_month.slice(0, 7) <= lastMonth)
-    .map((period) => period.id);
-  obligations += workspace.rentCharges
-    .filter((charge) => duePeriodIds.includes(charge.rent_period_id))
+export function rentBillTotal(workspace: WorkspaceData, bill: RentPeriod) {
+  const charges = workspace.rentCharges
+    .filter((charge) => charge.rent_period_id === bill.id)
     .reduce((sum, charge) => sum + charge.amount, 0);
-  const payablePeriodIds = workspace.rentPeriods
-    .filter((period) => period.agreement_id === agreementId && (!beforeMonth || period.rent_month < beforeMonth))
-    .map((period) => period.id);
-  const payments = workspace.receipts
-    .filter((receipt) => receipt.status === "valid" && payablePeriodIds.includes(receipt.rent_period_id))
-    .reduce((sum, receipt) => sum + receipt.amount, 0);
-  return obligations - payments;
+  return bill.base_rent + charges;
+}
+
+export function rentBillPaid(workspace: WorkspaceData, bill: RentPeriod) {
+  const validReceiptIds = new Set(workspace.receipts.filter((receipt) => receipt.status === "valid").map((receipt) => receipt.id));
+  return workspace.paymentAllocations
+    .filter((allocation) => allocation.rent_period_id === bill.id && validReceiptIds.has(allocation.receipt_id))
+    .reduce((sum, allocation) => sum + allocation.allocated_amount, 0);
+}
+
+export function rentBillRemaining(workspace: WorkspaceData, bill: RentPeriod) {
+  if (bill.voided_at) return 0;
+  return Math.max(0, rentBillTotal(workspace, bill) - rentBillPaid(workspace, bill));
+}
+
+export function rentBillStatus(workspace: WorkspaceData, bill: RentPeriod, today = new Date().toISOString().slice(0, 10)) {
+  if (bill.voided_at) return "void" as const;
+  const paid = rentBillPaid(workspace, bill);
+  const total = rentBillTotal(workspace, bill);
+  if (paid >= total - 0.01) return "paid" as const;
+  if (bill.due_date < today) return "overdue" as const;
+  if (paid > 0) return "partially_paid" as const;
+  if (bill.due_date > today) return "upcoming" as const;
+  return "due" as const;
+}
+
+export function receiptAllocations(workspace: WorkspaceData, receiptId: string) {
+  return workspace.paymentAllocations.filter((allocation) => allocation.receipt_id === receiptId);
+}
+
+export function agreementCredit(workspace: WorkspaceData, agreementId: string) {
+  return workspace.receipts
+    .filter((receipt) => receipt.agreement_id === agreementId && receipt.status === "valid")
+    .reduce((sum, receipt) => sum + receipt.unallocated_amount, 0);
+}
+
+export function periodBalance(workspace: WorkspaceData, agreementId: string, beforeMonth?: string) {
+  const bills = workspace.rentPeriods.filter((bill) =>
+    bill.agreement_id === agreementId && !bill.voided_at && (!beforeMonth || bill.rent_month < beforeMonth));
+  const due = bills.reduce((sum, bill) => sum + rentBillRemaining(workspace, bill), 0);
+  return due - agreementCredit(workspace, agreementId);
 }
 
 export function monthLabel(month: string) {

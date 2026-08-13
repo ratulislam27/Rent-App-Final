@@ -1,6 +1,7 @@
 export type Id = string;
 export type PropertyStatus = "vacant" | "occupied" | "maintenance";
 export type AgreementStatus = "upcoming" | "active" | "ended" | "terminated";
+export type RentBillStatus = "upcoming" | "due" | "partially_paid" | "paid" | "overdue" | "void";
 
 export interface Profile {
   id: Id;
@@ -98,9 +99,14 @@ export interface RentIncrement {
 export interface RentPeriod {
   id: Id;
   user_id: Id;
+  display_id: string;
   agreement_id: Id;
   rent_month: string;
+  issue_date: string;
+  due_date: string;
   base_rent: number;
+  void_reason: string | null;
+  voided_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -119,9 +125,11 @@ export interface RentReceipt {
   user_id: Id;
   display_id: string;
   request_key?: string;
-  rent_period_id: Id;
+  agreement_id: Id;
+  rent_period_id: Id | null;
   collection_date: string;
   amount: number;
+  unallocated_amount: number;
   payment_method_id: Id | null;
   collected_by: string | null;
   notes: string;
@@ -130,6 +138,15 @@ export interface RentReceipt {
   voided_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface RentPaymentAllocation {
+  id: Id;
+  user_id: Id;
+  receipt_id: Id;
+  rent_period_id: Id;
+  allocated_amount: number;
+  created_at: string;
 }
 
 export interface Expense {
@@ -181,27 +198,26 @@ export interface WorkspaceData {
   rentPeriods: RentPeriod[];
   rentCharges: RentCharge[];
   receipts: RentReceipt[];
+  paymentAllocations: RentPaymentAllocation[];
   expenses: Expense[];
   allocations: ExpenseAllocation[];
   attachments: Attachment[];
 }
 
-export interface ChargeInput {
-  reason: string;
+export interface PaymentAllocationInput {
+  rentPeriodId: Id;
   amount: number;
 }
 
-export interface CreateReceiptInput {
+export interface CreateRentPaymentInput {
   requestKey: string;
   agreementId: Id;
-  rentMonth: string;
-  baseRent: number;
   collectionDate: string;
   amount: number;
   paymentMethodId: Id | null;
   collectedBy: string;
   notes: string;
-  charges: ChargeInput[];
+  allocations: PaymentAllocationInput[];
 }
 
 export interface AdminUser extends Profile {

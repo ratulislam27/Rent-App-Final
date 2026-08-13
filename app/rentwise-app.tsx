@@ -58,15 +58,27 @@ import {
 import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import { agreementStatus, monthLabel, periodBalance, rentForMonth, RentwiseDataService } from "@/lib/data-service";
+import {
+  agreementCredit,
+  agreementStatus,
+  monthLabel,
+  periodBalance,
+  receiptAllocations,
+  rentBillPaid,
+  rentBillRemaining,
+  rentBillStatus,
+  rentBillTotal,
+  RentwiseDataService,
+} from "@/lib/data-service";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import type {
   AdminUser,
   Agreement,
-  ChargeInput,
   Expense,
   LookupOption,
   Property,
+  RentBillStatus,
+  RentPeriod,
   RentReceipt,
   Tenant,
   WorkspaceData,
@@ -74,15 +86,14 @@ import type {
 
 type MainRoute = "home" | "properties" | "tenants" | "collections" | "more";
 type Route = MainRoute | "agreements" | "expenses" | "reports" | "settings" | "admin";
-type Detail = { kind: "property" | "tenant" | "agreement" | "receipt" | "expense"; id: string } | null;
-type FormKind = "property" | "tenant" | "agreement" | "collection" | "expense" | "increment" | "profile" | "receipt-settings" | "lookup" | "password" | null;
+type Detail = { kind: "property" | "tenant" | "agreement" | "bill" | "receipt" | "expense"; id: string } | null;
+type FormKind = "property" | "tenant" | "agreement" | "collection" | "bill-charge" | "expense" | "increment" | "profile" | "receipt-settings" | "lookup" | "password" | null;
 type ThemePreference = "light" | "dark" | "system";
 type ResolvedTheme = "light" | "dark";
 
 const today = new Date();
 const todayISO = today.toISOString().slice(0, 10);
 const currentMonth = todayISO.slice(0, 7);
-const currentMonthStart = `${currentMonth}-01`;
 
 function cn(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
@@ -142,6 +153,15 @@ function IconTile({ icon: Icon, tone = "neutral" }: { icon: LucideIcon; tone?: "
 
 function StatusPill({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "positive" | "warning" | "danger" | "info" }) {
   return <span className={cn("status-pill", `status-${tone}`)}><span className="status-dot" />{children}</span>;
+}
+
+function billStatusLabel(status: RentBillStatus) {
+  return status === "partially_paid" ? "Partially paid" : status[0].toUpperCase() + status.slice(1);
+}
+
+function BillStatusPill({ status }: { status: RentBillStatus }) {
+  const tone = status === "paid" ? "positive" : status === "overdue" || status === "void" ? "danger" : status === "due" || status === "partially_paid" ? "warning" : "info";
+  return <StatusPill tone={tone}>{billStatusLabel(status)}</StatusPill>;
 }
 
 function EmptyState({ icon: Icon, title, text, action }: { icon: LucideIcon; title: string; text: string; action?: ReactNode }) {
@@ -371,6 +391,7 @@ export default function RentwiseApp() {
   if (detail?.kind === "property") page = <PropertyDetail {...pageProps} id={detail.id} />;
   else if (detail?.kind === "tenant") page = <TenantDetail {...pageProps} id={detail.id} />;
   else if (detail?.kind === "agreement") page = <AgreementDetail {...pageProps} id={detail.id} />;
+  else if (detail?.kind === "bill") page = <RentBillDetail {...pageProps} id={detail.id} />;
   else if (detail?.kind === "receipt") page = <ReceiptDetail {...pageProps} id={detail.id} />;
   else if (detail?.kind === "expense") page = <ExpenseDetail {...pageProps} id={detail.id} />;
   else {
@@ -394,12 +415,13 @@ export default function RentwiseApp() {
       <AppHeader workspace={workspace} route={route} theme={themeState.resolved} onToggleTheme={() => chooseTheme(themeState.resolved === "dark" ? "light" : "dark")} onSettings={() => navigate("settings")} onAdmin={() => navigate("admin")} onSignOut={signOut} />
       {service.isDemo && <div className="demo-banner"><Info size={15} /><span>Sample workspace · changes reset when the page reloads</span></div>}
       {error && <div className="global-alert"><CircleAlert size={17} /><span>{error}</span><button type="button" onClick={() => setError("")}><X size={16} /></button></div>}
-      <main className="app-main"><div className="page-transition" key={`${route}-${detail?.kind ?? "list"}-${detail?.id ?? ""}`}>{detail && <button className="back-button" type="button" onClick={() => setDetail(null)}><ChevronLeft size={18} />Back</button>}{page}{detail && <AttachmentList workspace={workspace} service={service} entityType={detail.kind} entityId={detail.id} onError={setError} />}</div></main>
+      <main className="app-main"><div className="page-transition" key={`${route}-${detail?.kind ?? "list"}-${detail?.id ?? ""}`}>{detail && <button className="back-button" type="button" onClick={() => setDetail(null)}><ChevronLeft size={18} />Back</button>}{page}{detail && detail.kind !== "bill" && <AttachmentList workspace={workspace} service={service} entityType={detail.kind} entityId={detail.id} onError={setError} />}</div></main>
     </div>
     {form === "property" && <PropertyForm workspace={workspace} service={service} targetId={formTarget} onClose={closeForm} mutate={mutate} />}
     {form === "tenant" && <TenantForm workspace={workspace} service={service} targetId={formTarget} onClose={closeForm} mutate={mutate} />}
     {form === "agreement" && <AgreementForm workspace={workspace} service={service} targetId={formTarget} onClose={closeForm} mutate={mutate} />}
     {form === "collection" && <CollectionForm workspace={workspace} service={service} targetId={formTarget} onClose={closeForm} mutate={mutate} />}
+    {form === "bill-charge" && formTarget && <RentBillChargeForm workspace={workspace} service={service} billId={formTarget} onClose={closeForm} mutate={mutate} />}
     {form === "expense" && <ExpenseForm workspace={workspace} service={service} onClose={closeForm} mutate={mutate} />}
     {form === "increment" && formTarget && <IncrementForm workspace={workspace} service={service} agreementId={formTarget} onClose={closeForm} mutate={mutate} />}
     {form === "profile" && <ProfileForm workspace={workspace} service={service} onClose={closeForm} mutate={mutate} />}
@@ -443,23 +465,18 @@ function MorePage({ workspace, navigate, signOut }: { workspace: WorkspaceData; 
 function HomePage(props: PageProps) {
   const { workspace, openForm, setDetail, navigate } = props;
   const symbol = workspace.settings.currency_symbol;
-  const activeAgreements = workspace.agreements.filter((agreement) => agreementStatus(agreement, todayISO) === "active" && !agreement.archived_at);
-  const expectedRows = activeAgreements.map((agreement) => {
-    const rentMonth = shiftMonth(currentMonth, -agreement.collection_offset);
-    const period = workspace.rentPeriods.find((item) => item.agreement_id === agreement.id && item.rent_month.startsWith(rentMonth));
-    const periodReceipts = period ? workspace.receipts.filter((receipt) => receipt.rent_period_id === period.id && receipt.status === "valid") : [];
-    const received = periodReceipts.reduce((sum, receipt) => sum + receipt.amount, 0);
-    const expected = rentForMonth(agreement, workspace.increments, rentMonth);
-    return { agreement, rentMonth, expected, received, remaining: Math.max(periodBalance(workspace, agreement.id), 0) };
-  });
-  const expected = expectedRows.reduce((sum, row) => sum + row.expected, 0);
+  const currentDueBills = workspace.rentPeriods.filter((bill) => !bill.voided_at && bill.due_date.startsWith(currentMonth));
+  const expected = currentDueBills.reduce((sum, bill) => sum + rentBillTotal(workspace, bill), 0);
   const collected = workspace.receipts.filter((receipt) => receipt.status === "valid" && receipt.collection_date.startsWith(currentMonth)).reduce((sum, receipt) => sum + receipt.amount, 0);
-  const remaining = expectedRows.reduce((sum, row) => sum + row.remaining, 0);
+  const remaining = workspace.rentPeriods.filter((bill) => !bill.voided_at && bill.due_date <= todayISO).reduce((sum, bill) => sum + rentBillRemaining(workspace, bill), 0);
   const expenses = workspace.expenses.filter((expense) => expense.status === "valid" && expense.expense_date.startsWith(currentMonth)).reduce((sum, expense) => sum + expense.amount, 0);
   const percent = expected ? Math.min(100, Math.round((collected / expected) * 100)) : 0;
   const occupied = workspace.properties.filter((property) => !property.archived_at && property.status === "occupied").length;
   const vacant = workspace.properties.filter((property) => !property.archived_at && property.status === "vacant").length;
-  const attention = expectedRows.filter((row) => row.remaining > 0);
+  const attention = workspace.rentPeriods
+    .filter((bill) => !bill.voided_at && rentBillRemaining(workspace, bill) > 0)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date))
+    .slice(0, 6);
   const recent = [
     ...workspace.receipts.filter((item) => item.status === "valid").map((item) => ({ type: "receipt" as const, date: item.collection_date, item })),
     ...workspace.expenses.filter((item) => item.status === "valid").map((item) => ({ type: "expense" as const, date: item.expense_date, item })),
@@ -489,12 +506,12 @@ function HomePage(props: PageProps) {
     <section className="page-section">
       <SectionHeading title="Needs attention" action={<button className="text-button" type="button" onClick={() => navigate("reports")}>Outstanding report</button>} />
       <div className="record-list">
-        {attention.length ? attention.map(({ agreement, rentMonth, remaining: due }) => {
-          const tenant = workspace.tenants.find((item) => item.id === agreement.tenant_id);
-          const property = workspace.properties.find((item) => item.id === agreement.property_id);
-          const dueDate = new Date(`${shiftMonth(rentMonth, agreement.collection_offset)}-${String(agreement.due_day).padStart(2, "0")}T00:00:00`);
-          const overdue = dueDate < today;
-          return <button className="record-row" type="button" key={agreement.id} onClick={() => openForm("collection", agreement.id)}><IconTile icon={CalendarClock} tone={overdue ? "danger" : "warning"} /><span className="record-main"><strong>{monthLabel(rentMonth)} · {tenant?.name}</strong><small>{property?.name} · due {formatDate(dueDate.toISOString())}</small></span><span className="record-end"><strong>{formatMoney(due, symbol)}</strong><small className={overdue ? "text-danger" : ""}>{overdue ? "Overdue" : "Upcoming"}</small></span></button>;
+        {attention.length ? attention.map((bill) => {
+          const agreement = workspace.agreements.find((item) => item.id === bill.agreement_id);
+          const tenant = workspace.tenants.find((item) => item.id === agreement?.tenant_id);
+          const property = workspace.properties.find((item) => item.id === agreement?.property_id);
+          const status = rentBillStatus(workspace, bill, todayISO);
+          return <button className="record-row" type="button" key={bill.id} onClick={() => setDetail({ kind: "bill", id: bill.id })}><IconTile icon={CalendarClock} tone={status === "overdue" ? "danger" : "warning"} /><span className="record-main"><strong>{monthLabel(bill.rent_month)} · {tenant?.name}</strong><small>{bill.display_id} · {property?.name} · due {formatDate(bill.due_date)}</small></span><span className="record-end"><strong>{formatMoney(rentBillRemaining(workspace, bill), symbol)}</strong><small className={status === "overdue" ? "text-danger" : ""}>{billStatusLabel(status)}</small></span></button>;
         }) : <EmptyState icon={CircleCheck} title="All caught up" text="No current rent needs attention." />}
       </div>
     </section>
@@ -502,8 +519,7 @@ function HomePage(props: PageProps) {
       <SectionHeading title="Recent activity" action={<button className="text-button" type="button" onClick={() => navigate("collections")}>View all</button>} />
       <div className="record-list">{recent.map((entry) => {
         if (entry.type === "receipt") {
-          const period = workspace.rentPeriods.find((item) => item.id === entry.item.rent_period_id);
-          const agreement = workspace.agreements.find((item) => item.id === period?.agreement_id);
+          const agreement = workspace.agreements.find((item) => item.id === entry.item.agreement_id);
           const tenant = workspace.tenants.find((item) => item.id === agreement?.tenant_id);
           return <button className="record-row" type="button" key={entry.item.id} onClick={() => setDetail({ kind: "receipt", id: entry.item.id })}><IconTile icon={ArrowDownLeft} tone="positive" /><span className="record-main"><strong>Rent received · {tenant?.name}</strong><small>{entry.item.display_id} · {formatDate(entry.item.collection_date)}</small></span><span className="record-end positive-value">+{formatMoney(entry.item.amount, symbol)}</span></button>;
         }
@@ -564,12 +580,14 @@ function TenantDetail({ workspace, id, setDetail, openForm, setConfirm, service,
   const agreement = activeAgreement(workspace, undefined, tenant.id);
   const property = workspace.properties.find((item) => item.id === agreement?.property_id);
   const balance = agreement ? periodBalance(workspace, agreement.id) : 0;
-  const tenantReceipts = workspace.receipts.filter((receipt) => { const period = workspace.rentPeriods.find((item) => item.id === receipt.rent_period_id); return period?.agreement_id === agreement?.id; }).sort((a, b) => b.collection_date.localeCompare(a.collection_date));
+  const tenantReceipts = workspace.receipts.filter((receipt) => receipt.agreement_id === agreement?.id).sort((a, b) => b.collection_date.localeCompare(a.collection_date));
+  const tenantBills = workspace.rentPeriods.filter((bill) => bill.agreement_id === agreement?.id).sort((a, b) => b.rent_month.localeCompare(a.rent_month));
   const hasHistory = workspace.agreements.some((item) => item.tenant_id === tenant.id) || workspace.attachments.some((item) => item.entity_type === "tenant" && item.entity_id === tenant.id);
   return <><PageHeading eyebrow={tenant.display_id} title={tenant.name} subtitle={tenant.phone} action={<div className="heading-actions"><a className="button button-secondary" href={`tel:${tenant.phone}`}><Phone size={16} />Call</a><button className="button button-secondary" type="button" onClick={() => openForm("tenant", tenant.id)}><Pencil size={16} />Edit</button></div>} />
     <div className="detail-grid"><section className="detail-card"><SectionHeading title="Contact & identity" /><dl className="detail-list"><div><dt>Email</dt><dd>{tenant.email || "Not provided"}</dd></div><div><dt>Address</dt><dd>{tenant.address || "Not provided"}</dd></div><div><dt>NID</dt><dd>{idSuffix(tenant.nid)}</dd></div><div><dt>Notes</dt><dd>{tenant.notes || "No internal notes"}</dd></div></dl></section>
       <section className="detail-card"><SectionHeading title="Current tenancy" action={agreement && <button className="text-button" type="button" onClick={() => setDetail({ kind: "agreement", id: agreement.id })}>View agreement</button>} />{agreement && property ? <><button className="property-summary" type="button" onClick={() => setDetail({ kind: "property", id: property.id })}><IconTile icon={Building2} /><span><strong>{property.name}</strong><small>{property.display_id} · {agreement.display_id}</small></span><ChevronRight size={17} /></button><div className="balance-line"><span>Recorded balance</span><strong className={balance > 0 ? "text-danger" : balance < 0 ? "positive-value" : ""}>{balance > 0 ? `${formatMoney(balance, workspace.settings.currency_symbol)} due` : balance < 0 ? `${formatMoney(Math.abs(balance), workspace.settings.currency_symbol)} advance` : "Paid"}</strong></div></> : <EmptyState icon={Home} title="No active agreement" text="The tenant remains available for a new agreement." />}</section></div>
-    <section className="page-section"><SectionHeading title="Recent receipts" action={agreement && <button className="text-button" type="button" onClick={() => openForm("collection", agreement.id)}>Collect rent</button>} /><div className="record-list">{tenantReceipts.slice(0, 5).map((receipt) => <button className="record-row" type="button" key={receipt.id} onClick={() => setDetail({ kind: "receipt", id: receipt.id })}><IconTile icon={ReceiptText} /><span className="record-main"><strong>{receipt.display_id}</strong><small>{formatDate(receipt.collection_date)}</small></span><span className="record-end"><strong>{formatMoney(receipt.amount, workspace.settings.currency_symbol)}</strong><small>{receipt.status}</small></span></button>)}{!tenantReceipts.length && <EmptyState icon={ReceiptText} title="No receipts yet" text="Rent receipts for this tenant will appear here." />}</div></section>
+    <section className="page-section"><SectionHeading title="Monthly rent bills" action={agreement && <button className="text-button" type="button" onClick={() => openForm("collection", agreement.id)}>Receive payment</button>} /><div className="record-list">{tenantBills.slice(0, 6).map((bill) => { const billStatus = rentBillStatus(workspace, bill, todayISO); return <button className="record-row" type="button" key={bill.id} onClick={() => setDetail({ kind: "bill", id: bill.id })}><IconTile icon={FileText} tone={billStatus === "overdue" ? "danger" : billStatus === "paid" ? "positive" : "warning"} /><span className="record-main"><strong>{monthLabel(bill.rent_month)}</strong><small>{bill.display_id} · due {formatDate(bill.due_date)}</small></span><span className="record-end"><strong>{formatMoney(rentBillRemaining(workspace, bill), workspace.settings.currency_symbol)}</strong><BillStatusPill status={billStatus} /></span></button>; })}{!tenantBills.length && <EmptyState icon={FileText} title="No rent bills yet" text="Monthly bills appear automatically from the agreement schedule." />}</div></section>
+    <section className="page-section"><SectionHeading title="Recent receipts" /><div className="record-list">{tenantReceipts.slice(0, 5).map((receipt) => <button className="record-row" type="button" key={receipt.id} onClick={() => setDetail({ kind: "receipt", id: receipt.id })}><IconTile icon={ReceiptText} /><span className="record-main"><strong>{receipt.display_id}</strong><small>{formatDate(receipt.collection_date)}</small></span><span className="record-end"><strong>{formatMoney(receipt.amount, workspace.settings.currency_symbol)}</strong><small>{receipt.status}</small></span></button>)}{!tenantReceipts.length && <EmptyState icon={ReceiptText} title="No receipts yet" text="Rent receipts for this tenant will appear here." />}</div></section>
     <div className="detail-footer">{hasHistory ? <button className="button button-secondary" type="button" onClick={() => setConfirm({ title: "Archive this tenant?", text: "The tenant will leave active lists, while agreements and receipts remain available.", label: "Archive tenant", tone: "danger", action: async () => { await service.updateTenant(tenant.id, { archived_at: new Date().toISOString() }); await refresh(); notify(`${tenant.display_id} archived`); setDetail(null); } })}><Archive size={16} />Archive</button> : <button className="button button-secondary button-danger-text" type="button" onClick={() => setConfirm({ title: "Delete this unused tenant?", text: "This is permanent. Deletion is allowed only because the tenant has never been connected to an agreement.", label: "Delete tenant", tone: "danger", action: async () => { await service.deleteUnusedTenant(tenant.id); await refresh(); notify(`${tenant.display_id} deleted`); setDetail(null); } })}><Trash2 size={16} />Delete permanently</button>}</div>
   </>;
 }
@@ -590,44 +608,82 @@ function AgreementDetail({ workspace, id, setDetail, openForm, setConfirm, servi
   const property = workspace.properties.find((item) => item.id === agreement.property_id);
   const status = agreementStatus(agreement, todayISO);
   const increments = workspace.increments.filter((item) => item.agreement_id === agreement.id).sort((a, b) => a.start_month.localeCompare(b.start_month));
-  return <><PageHeading eyebrow={agreement.display_id} title={`${tenant?.name} · ${property?.name}`} subtitle={`${formatDate(agreement.start_date)} – ${formatDate(agreement.end_date)}`} action={<div className="heading-actions"><button className="button button-secondary" type="button" onClick={() => openForm("agreement", agreement.id)}><Pencil size={16} />Edit</button><button className="button button-primary" type="button" onClick={() => openForm("collection", agreement.id)}><WalletCards size={16} />Collect rent</button></div>} />
+  const bills = workspace.rentPeriods.filter((bill) => bill.agreement_id === agreement.id).sort((a, b) => b.rent_month.localeCompare(a.rent_month));
+  return <><PageHeading eyebrow={agreement.display_id} title={`${tenant?.name} · ${property?.name}`} subtitle={`${formatDate(agreement.start_date)} – ${formatDate(agreement.end_date)}`} action={<div className="heading-actions"><button className="button button-secondary" type="button" onClick={() => openForm("agreement", agreement.id)}><Pencil size={16} />Edit</button><button className="button button-primary" type="button" onClick={() => openForm("collection", agreement.id)}><WalletCards size={16} />Receive payment</button></div>} />
     <div className="detail-grid"><section className="detail-card"><SectionHeading title="Agreement terms" /><dl className="detail-list"><div><dt>Status</dt><dd><StatusPill tone={status === "active" ? "positive" : status === "upcoming" ? "info" : "neutral"}>{status}</StatusPill></dd></div><div><dt>Monthly base rent</dt><dd>{formatMoney(agreement.monthly_base_rent, workspace.settings.currency_symbol)}</dd></div><div><dt>Security deposit</dt><dd>{formatMoney(agreement.security_deposit, workspace.settings.currency_symbol)}</dd></div><div><dt>Notice period</dt><dd>{agreement.notice_period_months} month{agreement.notice_period_months === 1 ? "" : "s"}</dd></div></dl></section>
       <section className="detail-card"><SectionHeading title="Collection schedule" /><div className="schedule-callout"><CalendarDays size={20} /><div><strong>{agreement.collection_offset === 0 ? "Collect in the same month" : "Collect in the following month"}</strong><p>{agreement.collection_offset === 0 ? "January rent is expected in January." : "January rent is expected in February."}</p></div></div><dl className="detail-list compact"><div><dt>Expected by</dt><dd>Day {agreement.due_day}</dd></div><div><dt>Current balance</dt><dd>{formatMoney(periodBalance(workspace, agreement.id), workspace.settings.currency_symbol)}</dd></div></dl></section></div>
     <section className="page-section"><SectionHeading title="People & property" /><div className="split-summaries"><button className="tenant-summary" type="button" onClick={() => tenant && setDetail({ kind: "tenant", id: tenant.id })}><span className="avatar">{initials(tenant?.name ?? "")}</span><span><strong>{tenant?.name}</strong><small>{tenant?.display_id}</small></span><ChevronRight size={17} /></button><button className="property-summary" type="button" onClick={() => property && setDetail({ kind: "property", id: property.id })}><IconTile icon={Building2} /><span><strong>{property?.name}</strong><small>{property?.display_id}</small></span><ChevronRight size={17} /></button></div></section>
+    <section className="page-section"><SectionHeading title="Monthly rent bills" /><div className="record-list">{bills.slice(0, 12).map((bill) => { const billStatus = rentBillStatus(workspace, bill, todayISO); return <button className="record-row" type="button" key={bill.id} onClick={() => setDetail({ kind: "bill", id: bill.id })}><IconTile icon={FileText} tone={billStatus === "overdue" ? "danger" : billStatus === "paid" ? "positive" : "warning"} /><span className="record-main"><strong>{monthLabel(bill.rent_month)}</strong><small>{bill.display_id} · due {formatDate(bill.due_date)}</small></span><span className="record-end"><strong>{formatMoney(rentBillRemaining(workspace, bill), workspace.settings.currency_symbol)}</strong><BillStatusPill status={billStatus} /></span><ChevronRight className="row-chevron" size={17} /></button>; })}{!bills.length && <EmptyState icon={FileText} title="No rent bills yet" text="Bills are generated automatically when their rent month begins." />}</div></section>
     <section className="page-section"><SectionHeading title="Rent increments" action={status === "active" || status === "upcoming" ? <button className="text-button" type="button" onClick={() => openForm("increment", agreement.id)}><Plus size={15} />Add increment</button> : undefined} /><div className="record-list">{increments.map((increment) => <div className="record-row static-row" key={increment.id}><IconTile icon={ArrowUpRight} /><span className="record-main"><strong>{formatMoney(increment.new_base_rent, workspace.settings.currency_symbol)} from {monthLabel(increment.start_month)}</strong><small>{increment.end_month ? `Until ${monthLabel(increment.end_month)}` : "Until agreement end"}{increment.note ? ` · ${increment.note}` : ""}</small></span></div>)}{!increments.length && <EmptyState icon={ArrowUpRight} title="No rent increments" text="The base rent remains unchanged for this agreement." />}</div></section>
     {status === "active" && <div className="detail-footer"><button className="button button-secondary button-danger-text" type="button" onClick={() => setConfirm({ title: "Terminate this agreement?", text: "The property becomes vacant today. Existing receipts remain unchanged.", label: "Terminate agreement", tone: "danger", inputLabel: "Reason for early termination", action: async (reason) => { await service.updateAgreement(agreement.id, { terminated_on: todayISO, termination_note: reason || "Terminated by landlord" }); await refresh(); notify(`${agreement.display_id} terminated`); } })}><CircleStop size={16} />Terminate agreement</button></div>}
     {status === "upcoming" && <div className="detail-footer"><button className="button button-secondary button-danger-text" type="button" onClick={() => setConfirm({ title: "Cancel this upcoming agreement?", text: "The agreement will be archived and the property and tenant will remain available.", label: "Cancel agreement", tone: "danger", inputLabel: "Reason for cancellation", action: async (reason) => { await service.updateAgreement(agreement.id, { archived_at: new Date().toISOString(), termination_note: reason || "Cancelled before start" }); await refresh(); notify(`${agreement.display_id} cancelled`); } })}><CircleStop size={16} />Cancel agreement</button></div>}
   </>;
 }
 
+function RentBillDetail({ workspace, id, setDetail, openForm }: PageProps & { id: string }) {
+  const bill = workspace.rentPeriods.find((item) => item.id === id);
+  if (!bill) return <EmptyState icon={FileText} title="Rent bill not found" text="The requested monthly bill is unavailable." />;
+  const agreement = workspace.agreements.find((item) => item.id === bill.agreement_id);
+  const tenant = workspace.tenants.find((item) => item.id === agreement?.tenant_id);
+  const property = workspace.properties.find((item) => item.id === agreement?.property_id);
+  const charges = workspace.rentCharges.filter((item) => item.rent_period_id === bill.id);
+  const allocations = workspace.paymentAllocations.filter((item) => item.rent_period_id === bill.id).map((allocation) => ({ allocation, receipt: workspace.receipts.find((receipt) => receipt.id === allocation.receipt_id) })).filter((item) => item.receipt);
+  const status = rentBillStatus(workspace, bill, todayISO);
+  const total = rentBillTotal(workspace, bill);
+  const paid = rentBillPaid(workspace, bill);
+  const remaining = rentBillRemaining(workspace, bill);
+  return <>
+    <PageHeading eyebrow={bill.display_id} title={`${monthLabel(bill.rent_month)} rent`} subtitle={`${tenant?.name} · ${property?.name}`} action={<div className="heading-actions no-print"><button className="button button-secondary" type="button" onClick={() => window.print()}><Printer size={16} />Print</button>{!bill.voided_at && <button className="button button-secondary" type="button" onClick={() => openForm("bill-charge", bill.id)}><Plus size={16} />Add charge</button>}{remaining > 0 && <button className="button button-primary" type="button" onClick={() => openForm("collection", bill.id)}><WalletCards size={16} />Receive payment</button>}</div>} />
+    <article className={cn("receipt-paper", bill.voided_at && "is-void")}>
+      {bill.voided_at && <div className="void-watermark">VOID</div>}
+      <header className="receipt-header"><div className="brand-lockup">{workspace.settings.receipt_name || workspace.profile.full_name}</div><div><strong>RENT BILL</strong><span>{bill.display_id}</span></div></header>
+      <div className="receipt-party"><div><span>Bill to</span><strong>{tenant?.name}</strong><small>{tenant?.display_id} · {tenant?.phone}</small></div><div><span>For property</span><strong>{property?.name}</strong><small>{property?.display_id} · {agreement?.display_id}</small></div></div>
+      <div className="receipt-lines"><div><span>Rent period</span><strong>{monthLabel(bill.rent_month)}</strong></div><div><span>Issued</span><strong>{formatDate(bill.issue_date)}</strong></div><div><span>Due date</span><strong>{formatDate(bill.due_date)}</strong></div><div><span>Status</span><strong>{billStatusLabel(status)}</strong></div><div><span>Base rent</span><strong>{formatMoney(bill.base_rent, workspace.settings.currency_symbol)}</strong></div>{charges.map((charge) => <div key={charge.id}><span>{charge.reason}</span><strong>{formatMoney(charge.amount, workspace.settings.currency_symbol)}</strong></div>)}<div className="receipt-total"><span>Bill total</span><strong>{formatMoney(total, workspace.settings.currency_symbol)}</strong></div><div><span>Paid</span><strong className="positive-value">{formatMoney(paid, workspace.settings.currency_symbol)}</strong></div><div><span>Remaining</span><strong className={remaining > 0 ? "text-danger" : "positive-value"}>{formatMoney(remaining, workspace.settings.currency_symbol)}</strong></div></div>
+      <footer className="receipt-footer"><span>{workspace.settings.receipt_phone}</span><span>{workspace.settings.receipt_address}</span></footer>
+    </article>
+    <section className="page-section no-print"><SectionHeading title="Payments applied to this bill" /><div className="record-list">{allocations.map(({ allocation, receipt }) => <button className={cn("record-row", receipt!.status === "void" && "void-row")} type="button" key={allocation.id} onClick={() => setDetail({ kind: "receipt", id: receipt!.id })}><IconTile icon={ReceiptText} tone={receipt!.status === "void" ? "danger" : "positive"} /><span className="record-main"><strong>{receipt!.display_id}</strong><small>Received {formatDate(receipt!.collection_date)}{receipt!.status === "void" ? " · Void" : ""}</small></span><span className="record-end"><strong>{formatMoney(allocation.allocated_amount, workspace.settings.currency_symbol)}</strong></span><ChevronRight className="row-chevron" size={17} /></button>)}{!allocations.length && <EmptyState icon={WalletCards} title="No payments applied" text="This bill has not received a payment yet." />}</div></section>
+  </>;
+}
+
 function CollectionsPage({ workspace, setDetail, openForm }: PageProps) {
+  const [tab, setTab] = useState<"bills" | "payments">("bills");
   const [query, setQuery] = useState("");
-  const rows = workspace.receipts.filter((receipt) => {
-    const period = workspace.rentPeriods.find((item) => item.id === receipt.rent_period_id);
-    const agreement = workspace.agreements.find((item) => item.id === period?.agreement_id);
+  const [billFilter, setBillFilter] = useState<"open" | "paid" | "all">("open");
+  const receiptRows = workspace.receipts.filter((receipt) => {
+    const agreement = workspace.agreements.find((item) => item.id === receipt.agreement_id);
     const tenant = workspace.tenants.find((item) => item.id === agreement?.tenant_id);
     const property = workspace.properties.find((item) => item.id === agreement?.property_id);
     return `${receipt.display_id} ${tenant?.name} ${property?.name}`.toLowerCase().includes(query.toLowerCase());
   }).sort((a, b) => b.collection_date.localeCompare(a.collection_date));
+  const billRows = workspace.rentPeriods.filter((bill) => {
+    const agreement = workspace.agreements.find((item) => item.id === bill.agreement_id);
+    const tenant = workspace.tenants.find((item) => item.id === agreement?.tenant_id);
+    const property = workspace.properties.find((item) => item.id === agreement?.property_id);
+    const status = rentBillStatus(workspace, bill, todayISO);
+    const matchesFilter = billFilter === "all" || billFilter === "paid" && status === "paid" || billFilter === "open" && !["paid", "void"].includes(status);
+    return matchesFilter && `${bill.display_id} ${tenant?.name} ${property?.name} ${monthLabel(bill.rent_month)}`.toLowerCase().includes(query.toLowerCase());
+  }).sort((a, b) => b.rent_month.localeCompare(a.rent_month));
   const monthReceipts = workspace.receipts.filter((item) => item.status === "valid" && item.collection_date.startsWith(currentMonth));
   const total = monthReceipts.reduce((sum, item) => sum + item.amount, 0);
-  return <><PageHeading eyebrow={`${rows.length} receipts`} title="Rent collections" subtitle={`${formatMoney(total, workspace.settings.currency_symbol)} collected this month.`} action={<button className="button button-primary" type="button" onClick={() => openForm("collection")}><Plus size={17} />Collect rent</button>} />
-    <div className="list-toolbar"><label className="search-field"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search receipt, tenant or property" /></label></div>
-    <div className="record-list">{rows.map((receipt) => { const period = workspace.rentPeriods.find((item) => item.id === receipt.rent_period_id); const agreement = workspace.agreements.find((item) => item.id === period?.agreement_id); const tenant = workspace.tenants.find((item) => item.id === agreement?.tenant_id); const property = workspace.properties.find((item) => item.id === agreement?.property_id); return <button className={cn("record-row", receipt.status === "void" && "void-row")} type="button" key={receipt.id} onClick={() => setDetail({ kind: "receipt", id: receipt.id })}><IconTile icon={ReceiptText} tone={receipt.status === "void" ? "danger" : "positive"} /><span className="record-main"><strong>{tenant?.name} · {monthLabel(period?.rent_month ?? currentMonthStart)}</strong><small>{receipt.display_id} · {property?.name}</small></span><span className="record-end"><strong>{formatMoney(receipt.amount, workspace.settings.currency_symbol)}</strong><small>{receipt.status === "void" ? "Void" : formatDate(receipt.collection_date)}</small></span><ChevronRight className="row-chevron" size={17} /></button>; })}{!rows.length && <EmptyState icon={WalletCards} title="No rent receipts" text="Record a rent payment to generate the first receipt." />}</div>
+  return <><PageHeading eyebrow={`${workspace.rentPeriods.length} bills · ${workspace.receipts.length} receipts`} title="Rent bills & payments" subtitle={`${formatMoney(total, workspace.settings.currency_symbol)} received this month.`} action={<button className="button button-primary" type="button" onClick={() => openForm("collection")}><Plus size={17} />Receive payment</button>} />
+    <div className="segmented page-tabs"><button type="button" className={tab === "bills" ? "is-active" : ""} onClick={() => setTab("bills")}>Rent bills</button><button type="button" className={tab === "payments" ? "is-active" : ""} onClick={() => setTab("payments")}>Payment receipts</button></div>
+    <div className="list-toolbar"><label className="search-field"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === "bills" ? "Search bill, month, tenant or property" : "Search receipt, tenant or property"} /></label>{tab === "bills" && <div className="segmented">{(["open", "paid", "all"] as const).map((value) => <button type="button" key={value} className={billFilter === value ? "is-active" : ""} onClick={() => setBillFilter(value)}>{value[0].toUpperCase() + value.slice(1)}</button>)}</div>}</div>
+    {tab === "bills" ? <div className="record-list">{billRows.map((bill) => { const agreement = workspace.agreements.find((item) => item.id === bill.agreement_id); const tenant = workspace.tenants.find((item) => item.id === agreement?.tenant_id); const property = workspace.properties.find((item) => item.id === agreement?.property_id); const status = rentBillStatus(workspace, bill, todayISO); return <button className="record-row" type="button" key={bill.id} onClick={() => setDetail({ kind: "bill", id: bill.id })}><IconTile icon={FileText} tone={status === "overdue" || status === "void" ? "danger" : status === "paid" ? "positive" : "warning"} /><span className="record-main"><strong>{monthLabel(bill.rent_month)} · {tenant?.name}</strong><small>{bill.display_id} · {property?.name} · due {formatDate(bill.due_date)}</small></span><span className="record-end"><strong>{formatMoney(rentBillRemaining(workspace, bill), workspace.settings.currency_symbol)}</strong><BillStatusPill status={status} /></span><ChevronRight className="row-chevron" size={17} /></button>; })}{!billRows.length && <EmptyState icon={FileText} title="No matching rent bills" text="Monthly rent bills appear automatically from active agreements." />}</div> : <div className="record-list">{receiptRows.map((receipt) => { const agreement = workspace.agreements.find((item) => item.id === receipt.agreement_id); const tenant = workspace.tenants.find((item) => item.id === agreement?.tenant_id); const property = workspace.properties.find((item) => item.id === agreement?.property_id); const allocations = receiptAllocations(workspace, receipt.id); const periods = allocations.map((allocation) => workspace.rentPeriods.find((bill) => bill.id === allocation.rent_period_id)).filter(Boolean) as RentPeriod[]; return <button className={cn("record-row", receipt.status === "void" && "void-row")} type="button" key={receipt.id} onClick={() => setDetail({ kind: "receipt", id: receipt.id })}><IconTile icon={ReceiptText} tone={receipt.status === "void" ? "danger" : "positive"} /><span className="record-main"><strong>{tenant?.name} · {periods.length === 1 ? monthLabel(periods[0].rent_month) : `${periods.length} rent bills`}</strong><small>{receipt.display_id} · {property?.name}</small></span><span className="record-end"><strong>{formatMoney(receipt.amount, workspace.settings.currency_symbol)}</strong><small>{receipt.status === "void" ? "Void" : formatDate(receipt.collection_date)}</small></span><ChevronRight className="row-chevron" size={17} /></button>; })}{!receiptRows.length && <EmptyState icon={WalletCards} title="No rent receipts" text="Receive a rent payment to generate the first receipt." />}</div>}
   </>;
 }
 
 function ReceiptDetail({ workspace, id, setConfirm, service, refresh, notify }: PageProps & { id: string }) {
   const receipt = workspace.receipts.find((item) => item.id === id);
   if (!receipt) return <EmptyState icon={ReceiptText} title="Receipt not found" text="The requested receipt is unavailable." />;
-  const period = workspace.rentPeriods.find((item) => item.id === receipt.rent_period_id);
-  const agreement = workspace.agreements.find((item) => item.id === period?.agreement_id);
+  const agreement = workspace.agreements.find((item) => item.id === receipt.agreement_id);
   const tenant = workspace.tenants.find((item) => item.id === agreement?.tenant_id);
   const property = workspace.properties.find((item) => item.id === agreement?.property_id);
   const method = workspace.paymentMethods.find((item) => item.id === receipt.payment_method_id);
-  const charges = workspace.rentCharges.filter((item) => item.rent_period_id === period?.id);
+  const allocations = receiptAllocations(workspace, receipt.id).map((allocation) => ({ allocation, bill: workspace.rentPeriods.find((item) => item.id === allocation.rent_period_id) })).filter((item) => item.bill);
   const share = async () => {
-    const text = `${workspace.settings.receipt_name || workspace.profile.full_name}\nReceipt ${receipt.display_id}\n${tenant?.name} · ${property?.name}\n${monthLabel(period?.rent_month ?? currentMonthStart)}\nAmount received: ${formatMoney(receipt.amount, workspace.settings.currency_symbol)}`;
+    const applied = allocations.map(({ allocation, bill }) => `${monthLabel(bill!.rent_month)}: ${formatMoney(allocation.allocated_amount, workspace.settings.currency_symbol)}`).join("\n");
+    const credit = receipt.unallocated_amount > 0 ? `\nTenant credit: ${formatMoney(receipt.unallocated_amount, workspace.settings.currency_symbol)}` : "";
+    const text = `${workspace.settings.receipt_name || workspace.profile.full_name}\nReceipt ${receipt.display_id}\n${tenant?.name} · ${property?.name}\n${applied}${credit}\nAmount received: ${formatMoney(receipt.amount, workspace.settings.currency_symbol)}`;
     if (navigator.share) await navigator.share({ title: `Rent receipt ${receipt.display_id}`, text });
     else { await navigator.clipboard.writeText(text); notify("Receipt copied to clipboard"); }
   };
@@ -636,7 +692,7 @@ function ReceiptDetail({ workspace, id, setConfirm, service, refresh, notify }: 
       {receipt.status === "void" && <div className="void-watermark">VOID</div>}
       <header className="receipt-header"><div className="brand-lockup">{workspace.settings.receipt_name || workspace.profile.full_name}</div><div><strong>RENT RECEIPT</strong><span>{receipt.display_id}</span></div></header>
       <div className="receipt-party"><div><span>Received from</span><strong>{tenant?.name}</strong><small>{tenant?.display_id} · {tenant?.phone}</small></div><div><span>For property</span><strong>{property?.name}</strong><small>{property?.display_id} · {agreement?.display_id}</small></div></div>
-      <div className="receipt-lines"><div><span>Rent period</span><strong>{monthLabel(period?.rent_month ?? currentMonthStart)}</strong></div><div><span>Base rent</span><strong>{formatMoney(period?.base_rent ?? 0, workspace.settings.currency_symbol)}</strong></div>{charges.map((charge) => <div key={charge.id}><span>{charge.reason}</span><strong>{formatMoney(charge.amount, workspace.settings.currency_symbol)}</strong></div>)}<div><span>Payment method</span><strong>{method?.name ?? "Not recorded"}</strong></div><div><span>Collection date</span><strong>{formatDate(receipt.collection_date)}</strong></div><div className="receipt-total"><span>Amount received</span><strong>{formatMoney(receipt.amount, workspace.settings.currency_symbol)}</strong></div></div>
+      <div className="receipt-lines">{allocations.map(({ allocation, bill }) => <div key={allocation.id}><span>{monthLabel(bill!.rent_month)} · {bill!.display_id}</span><strong>{formatMoney(allocation.allocated_amount, workspace.settings.currency_symbol)}</strong></div>)}{receipt.unallocated_amount > 0 && <div><span>Tenant credit</span><strong>{formatMoney(receipt.unallocated_amount, workspace.settings.currency_symbol)}</strong></div>}<div><span>Payment method</span><strong>{method?.name ?? "Not recorded"}</strong></div><div><span>Collection date</span><strong>{formatDate(receipt.collection_date)}</strong></div><div className="receipt-total"><span>Amount received</span><strong>{formatMoney(receipt.amount, workspace.settings.currency_symbol)}</strong></div></div>
       <footer className="receipt-footer"><span>{workspace.settings.receipt_phone}</span><span>{workspace.settings.receipt_address}</span>{receipt.notes && <p>{receipt.notes}</p>}</footer>
     </article>
     {receipt.status === "valid" && <div className="detail-footer no-print"><button className="button button-secondary button-danger-text" type="button" onClick={() => setConfirm({ title: "Void this receipt?", text: "The receipt will remain in the audit trail and reports as void. This cannot be undone from the app.", label: "Void receipt", tone: "danger", inputLabel: "Reason for voiding", action: async (reason) => { await service.voidReceipt(receipt.id, reason || "Voided by landlord"); await refresh(); notify(`${receipt.display_id} marked void`); } })}><CircleStop size={16} />Void receipt</button></div>}
@@ -681,8 +737,7 @@ function ReportsPage({ workspace }: PageProps) {
   const periodLabel = periodMode === "month" ? monthLabel(`${month}-01`) : periodMode === "year" ? year : `${formatDate(fromDate)} – ${formatDate(toDate)}`;
   const filteredReceipts = workspace.receipts.filter((receipt) => receipt.status === "valid" && receipt.collection_date >= periodStart && receipt.collection_date <= periodEnd).filter((receipt) => {
     if (entity === "all") return true;
-    const period = workspace.rentPeriods.find((item) => item.id === receipt.rent_period_id);
-    const agreement = workspace.agreements.find((item) => item.id === period?.agreement_id);
+    const agreement = workspace.agreements.find((item) => item.id === receipt.agreement_id);
     return agreement?.tenant_id === entity || agreement?.property_id === entity || agreement?.id === entity;
   });
   const filteredExpenses = workspace.expenses.filter((expense) => expense.status === "valid" && expense.expense_date >= periodStart && expense.expense_date <= periodEnd).filter((expense) => {
@@ -691,8 +746,7 @@ function ReportsPage({ workspace }: PageProps) {
   });
   const income = filteredReceipts.reduce((sum, receipt) => sum + receipt.amount, 0);
   const expenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const balanceCutoff = `${shiftMonth(periodEnd.slice(0, 7), 1)}-01`;
-  const outstandingRows = workspace.agreements.filter((agreement) => !agreement.archived_at && agreement.start_date <= periodEnd).map((agreement) => ({ agreement, balance: periodBalance(workspace, agreement.id, balanceCutoff) })).filter((row) => row.balance > 0);
+  const outstandingRows = workspace.rentPeriods.filter((bill) => !bill.voided_at && bill.rent_month <= periodEnd && rentBillRemaining(workspace, bill) > 0).map((bill) => ({ bill, agreement: workspace.agreements.find((agreement) => agreement.id === bill.agreement_id)!, balance: rentBillRemaining(workspace, bill) }));
   const entityOptions = report === "tenant" ? workspace.tenants.map((item) => [item.id, item.name]) : report === "agreement" ? workspace.agreements.map((item) => [item.id, item.display_id]) : workspace.properties.map((item) => [item.id, item.name]);
   const titleMap = { summary: "Income & expense summary", collections: "Rent collection report", outstanding: "Outstanding rent", expenses: "Expense report", tenant: "Tenant statement", property: "Property statement", agreement: "Agreement statement" };
 
@@ -702,13 +756,13 @@ function ReportsPage({ workspace }: PageProps) {
       {report === "summary" && <><div className="report-totals"><div><span>Rent collected</span><strong>{formatMoney(income, symbol)}</strong></div><div><span>Expenses</span><strong>{formatMoney(expenses, symbol)}</strong></div><div><span>Net income</span><strong>{formatMoney(income - expenses, symbol)}</strong></div></div><ReportCollectionTable workspace={workspace} receipts={filteredReceipts} /><ReportExpenseTable workspace={workspace} expenses={filteredExpenses} /></>}
       {(report === "collections" || report === "tenant" || report === "property" || report === "agreement") && <ReportCollectionTable workspace={workspace} receipts={filteredReceipts} />}
       {report === "expenses" && <ReportExpenseTable workspace={workspace} expenses={filteredExpenses} />}
-      {report === "outstanding" && <div className="report-table-wrap"><table className="report-table"><thead><tr><th>Agreement</th><th>Tenant</th><th>Property</th><th className="number">Balance</th></tr></thead><tbody>{outstandingRows.map(({ agreement, balance }) => <tr key={agreement.id}><td>{agreement.display_id}</td><td>{workspace.tenants.find((item) => item.id === agreement.tenant_id)?.name}</td><td>{workspace.properties.find((item) => item.id === agreement.property_id)?.name}</td><td className="number">{formatMoney(balance, symbol)}</td></tr>)}</tbody><tfoot><tr><th colSpan={3}>Total outstanding</th><th className="number">{formatMoney(outstandingRows.reduce((sum, row) => sum + row.balance, 0), symbol)}</th></tr></tfoot></table></div>}
+      {report === "outstanding" && <div className="report-table-wrap"><table className="report-table"><thead><tr><th>Rent bill</th><th>Rent month</th><th>Tenant / Property</th><th>Due date</th><th className="number">Balance</th></tr></thead><tbody>{outstandingRows.map(({ bill, agreement, balance }) => <tr key={bill.id}><td>{bill.display_id}</td><td>{monthLabel(bill.rent_month)}</td><td>{workspace.tenants.find((item) => item.id === agreement.tenant_id)?.name}<small>{workspace.properties.find((item) => item.id === agreement.property_id)?.name}</small></td><td>{formatDate(bill.due_date)}</td><td className="number">{formatMoney(balance, symbol)}</td></tr>)}</tbody><tfoot><tr><th colSpan={4}>Total outstanding</th><th className="number">{formatMoney(outstandingRows.reduce((sum, row) => sum + row.balance, 0), symbol)}</th></tr></tfoot></table></div>}
     </article>
   </>;
 }
 
 function ReportCollectionTable({ workspace, receipts }: { workspace: WorkspaceData; receipts: RentReceipt[] }) {
-  return <section className="report-section"><h3>Rent collections</h3><div className="report-table-wrap"><table className="report-table"><thead><tr><th>Receipt</th><th>Date</th><th>Tenant / Property</th><th>Rent period</th><th className="number">Amount</th></tr></thead><tbody>{receipts.map((receipt) => { const period = workspace.rentPeriods.find((item) => item.id === receipt.rent_period_id); const agreement = workspace.agreements.find((item) => item.id === period?.agreement_id); return <tr key={receipt.id}><td>{receipt.display_id}</td><td>{formatDate(receipt.collection_date)}</td><td>{workspace.tenants.find((item) => item.id === agreement?.tenant_id)?.name}<small>{workspace.properties.find((item) => item.id === agreement?.property_id)?.name}</small></td><td>{monthLabel(period?.rent_month ?? currentMonthStart)}</td><td className="number">{formatMoney(receipt.amount, workspace.settings.currency_symbol)}</td></tr>; })}{!receipts.length && <tr><td colSpan={5} className="empty-cell">No collections in this period.</td></tr>}</tbody><tfoot><tr><th colSpan={4}>Total collected</th><th className="number">{formatMoney(receipts.reduce((sum, receipt) => sum + receipt.amount, 0), workspace.settings.currency_symbol)}</th></tr></tfoot></table></div></section>;
+  return <section className="report-section"><h3>Rent collections</h3><div className="report-table-wrap"><table className="report-table"><thead><tr><th>Receipt</th><th>Date</th><th>Tenant / Property</th><th>Applied to</th><th className="number">Amount</th></tr></thead><tbody>{receipts.map((receipt) => { const agreement = workspace.agreements.find((item) => item.id === receipt.agreement_id); const bills = receiptAllocations(workspace, receipt.id).map((allocation) => workspace.rentPeriods.find((bill) => bill.id === allocation.rent_period_id)).filter(Boolean) as RentPeriod[]; return <tr key={receipt.id}><td>{receipt.display_id}</td><td>{formatDate(receipt.collection_date)}</td><td>{workspace.tenants.find((item) => item.id === agreement?.tenant_id)?.name}<small>{workspace.properties.find((item) => item.id === agreement?.property_id)?.name}</small></td><td>{bills.map((bill) => monthLabel(bill.rent_month)).join(", ") || "Tenant credit"}</td><td className="number">{formatMoney(receipt.amount, workspace.settings.currency_symbol)}</td></tr>; })}{!receipts.length && <tr><td colSpan={5} className="empty-cell">No collections in this period.</td></tr>}</tbody><tfoot><tr><th colSpan={4}>Total collected</th><th className="number">{formatMoney(receipts.reduce((sum, receipt) => sum + receipt.amount, 0), workspace.settings.currency_symbol)}</th></tr></tfoot></table></div></section>;
 }
 
 function ReportExpenseTable({ workspace, expenses }: { workspace: WorkspaceData; expenses: Expense[] }) {
@@ -840,27 +894,45 @@ function AgreementForm({ workspace, service, targetId, onClose, mutate }: { work
 
 function CollectionForm({ workspace, service, targetId, onClose, mutate }: { workspace: WorkspaceData; service: RentwiseDataService; targetId: string | null; onClose: () => void; mutate: (operation: () => Promise<unknown>, success: string) => Promise<void> }) {
   const [requestKey] = useState(() => crypto.randomUUID());
-  const agreements = workspace.agreements.filter((item) => agreementStatus(item, todayISO) === "active");
-  const [agreementId, setAgreementId] = useState(targetId && agreements.some((item) => item.id === targetId) ? targetId : agreements[0]?.id ?? "");
+  const targetBill = workspace.rentPeriods.find((item) => item.id === targetId);
+  const agreements = workspace.agreements.filter((item) => !item.archived_at && (agreementStatus(item, todayISO) === "active" || workspace.rentPeriods.some((bill) => bill.agreement_id === item.id && rentBillRemaining(workspace, bill) > 0)));
+  const initialAgreementId = targetBill?.agreement_id ?? (targetId && agreements.some((item) => item.id === targetId) ? targetId : agreements[0]?.id ?? "");
+  const [agreementId, setAgreementId] = useState(initialAgreementId);
   const agreement = agreements.find((item) => item.id === agreementId);
-  const defaultRentMonth = agreement ? shiftMonth(currentMonth, -agreement.collection_offset) : currentMonth;
-  const [rentMonth, setRentMonth] = useState(defaultRentMonth);
-  const [charges, setCharges] = useState<ChargeInput[]>([]);
-  const baseRent = agreement ? rentForMonth(agreement, workspace.increments, rentMonth) : 0;
-  const normalizedMonth = `${rentMonth}-01`;
-  const prior = agreement ? periodBalance(workspace, agreement.id, normalizedMonth) : 0;
-  const period = workspace.rentPeriods.find((item) => item.agreement_id === agreementId && item.rent_month === normalizedMonth);
-  const existingCharges = workspace.rentCharges.filter((item) => item.rent_period_id === period?.id).reduce((sum, item) => sum + item.amount, 0);
-  const existingPayments = workspace.receipts.filter((item) => item.rent_period_id === period?.id && item.status === "valid").reduce((sum, item) => sum + item.amount, 0);
-  const newCharges = charges.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const expected = Math.max(0, prior + baseRent + existingCharges + newCharges - existingPayments);
+  const openBills = workspace.rentPeriods.filter((bill) => bill.agreement_id === agreementId && !bill.voided_at && rentBillRemaining(workspace, bill) > 0).sort((a, b) => a.rent_month.localeCompare(b.rent_month));
+  const targetAmount = targetBill && targetBill.agreement_id === agreementId ? rentBillRemaining(workspace, targetBill) : openBills.reduce((sum, bill) => sum + rentBillRemaining(workspace, bill), 0);
+  const allocateOldest = (paymentAmount: number, bills: RentPeriod[]) => {
+    let remaining = paymentAmount;
+    return Object.fromEntries(bills.map((bill) => { const applied = Math.min(remaining, rentBillRemaining(workspace, bill)); remaining -= applied; return [bill.id, applied]; }));
+  };
+  const [amount, setAmount] = useState(targetAmount);
+  const [billAllocations, setBillAllocations] = useState<Record<string, number>>(() => allocateOldest(targetAmount, openBills));
+  const allocationTotal = Object.values(billAllocations).reduce((sum, value) => sum + Number(value || 0), 0);
+  const unallocated = Math.max(0, amount - allocationTotal);
+  const allocationInvalid = allocationTotal > amount + 0.01 || openBills.some((bill) => Number(billAllocations[bill.id] || 0) > rentBillRemaining(workspace, bill) + 0.01);
   const tenant = workspace.tenants.find((item) => item.id === agreement?.tenant_id);
   const property = workspace.properties.find((item) => item.id === agreement?.property_id);
+  const resetAgreement = (nextAgreementId: string) => {
+    const nextBills = workspace.rentPeriods.filter((bill) => bill.agreement_id === nextAgreementId && !bill.voided_at && rentBillRemaining(workspace, bill) > 0).sort((a, b) => a.rent_month.localeCompare(b.rent_month));
+    const nextAmount = nextBills.reduce((sum, bill) => sum + rentBillRemaining(workspace, bill), 0);
+    setAgreementId(nextAgreementId); setAmount(nextAmount); setBillAllocations(allocateOldest(nextAmount, nextBills));
+  };
+  const updateAmount = (nextAmount: number) => { setAmount(nextAmount); setBillAllocations(allocateOldest(nextAmount, openBills)); };
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!agreement) return; const element = event.currentTarget; const form = new FormData(element);
-    await mutate(async () => { const receipt = await service.createReceipt(workspace.profile.id, { requestKey, agreementId: agreement.id, rentMonth, baseRent, collectionDate: String(form.get("date")), amount: safeNumber(form.get("amount")), paymentMethodId: String(form.get("method") || "") || null, collectedBy: String(form.get("collectedBy") || "").trim(), notes: String(form.get("notes") || "").trim(), charges: charges.filter((item) => item.reason.trim() && item.amount > 0) }); const files = Array.from((element.elements.namedItem("attachments") as HTMLInputElement)?.files ?? []); for (const file of files) await service.uploadAttachment(workspace.profile.id, "receipt", receipt.id, file); }, "Rent received and receipt generated");
+    if (allocationInvalid) return;
+    await mutate(async () => { const receipt = await service.createRentPayment(workspace.profile.id, { requestKey, agreementId: agreement.id, collectionDate: String(form.get("date")), amount, paymentMethodId: String(form.get("method") || "") || null, collectedBy: String(form.get("collectedBy") || "").trim(), notes: String(form.get("notes") || "").trim(), allocations: openBills.map((bill) => ({ rentPeriodId: bill.id, amount: Number(billAllocations[bill.id] || 0) })).filter((item) => item.amount > 0) }); const files = Array.from((element.elements.namedItem("attachments") as HTMLInputElement)?.files ?? []); for (const file of files) await service.uploadAttachment(workspace.profile.id, "receipt", receipt.id, file); }, "Payment received and allocated to its rent bills");
   }
-  return <Sheet title="Collect rent" subtitle="Each payment creates a permanent receipt ID." onClose={onClose} wide><form onSubmit={submit}><Field label="Agreement"><select value={agreementId} onChange={(event) => { const next = agreements.find((item) => item.id === event.target.value); setAgreementId(event.target.value); if (next) setRentMonth(shiftMonth(currentMonth, -next.collection_offset)); }} required>{agreements.map((item) => { const rowTenant = workspace.tenants.find((tenantItem) => tenantItem.id === item.tenant_id); const rowProperty = workspace.properties.find((propertyItem) => propertyItem.id === item.property_id); return <option value={item.id} key={item.id}>{rowTenant?.name} · {rowProperty?.name} · {item.display_id}</option>; })}</select></Field>{agreement && <><div className="selection-summary"><div><span>Tenant</span><strong>{tenant?.name}</strong></div><div><span>Property</span><strong>{property?.name}</strong></div><div><span>Schedule</span><strong>{agreement.collection_offset === 0 ? "Same month" : "Following month"}</strong></div></div><div className="field-grid"><Field label="Rent period"><input type="month" value={rentMonth} onChange={(event) => setRentMonth(event.target.value)} required /></Field><Field label="Collection date"><input name="date" type="date" defaultValue={todayISO} required /></Field></div><div className="inline-alert"><CalendarClock size={17} /><span>{monthLabel(normalizedMonth)} rent is expected in {monthLabel(`${shiftMonth(rentMonth, agreement.collection_offset)}-01`)} under this agreement.</span></div><div className="calculation-card"><div><span>Scheduled base rent</span><strong>{formatMoney(baseRent, workspace.settings.currency_symbol)}</strong></div><div><span>Previous due / advance</span><strong className={prior < 0 ? "positive-value" : prior > 0 ? "text-danger" : ""}>{prior < 0 ? `−${formatMoney(Math.abs(prior), workspace.settings.currency_symbol)}` : formatMoney(prior, workspace.settings.currency_symbol)}</strong></div>{existingCharges > 0 && <div><span>Existing charges</span><strong>{formatMoney(existingCharges, workspace.settings.currency_symbol)}</strong></div>}{existingPayments > 0 && <div><span>Already received for this period</span><strong>−{formatMoney(existingPayments, workspace.settings.currency_symbol)}</strong></div>}</div><SectionHeading title="Additional charges" action={<button className="text-button" type="button" onClick={() => setCharges((current) => [...current, { reason: "", amount: 0 }])}><Plus size={15} />Add charge</button>} />{charges.map((charge, index) => <div className="charge-row" key={index}><input aria-label={`Charge ${index + 1} reason`} placeholder="Reason" value={charge.reason} onChange={(event) => setCharges((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, reason: event.target.value } : item))} /><input aria-label={`Charge ${index + 1} amount`} type="number" inputMode="decimal" min="0.01" step="0.01" placeholder="Amount" value={charge.amount || ""} onChange={(event) => setCharges((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, amount: Number(event.target.value) } : item))} /><button type="button" className="icon-button danger-icon" onClick={() => setCharges((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label="Remove charge"><Trash2 size={17} /></button></div>)}<div className="expected-total"><span>Amount currently payable</span><strong>{formatMoney(expected, workspace.settings.currency_symbol)}</strong></div><Field label="Amount collected" hint="Partial and advance payments are allowed."><input name="amount" type="number" inputMode="decimal" min="0.01" step="0.01" defaultValue={expected || ""} key={`${agreementId}-${rentMonth}-${expected}`} required /></Field><Field label="Payment method"><select name="method" required><option value="" disabled>Select a method</option>{workspace.paymentMethods.filter((item) => item.is_active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Collected by (optional)"><input name="collectedBy" defaultValue={workspace.profile.full_name} /></Field><Field label="Attachment"><input name="attachments" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple /></Field><Field label="Notes"><textarea name="notes" /></Field></>}<div className="sheet-actions"><button className="button button-secondary" type="button" onClick={onClose}>Cancel</button><button className="button button-primary" type="submit" disabled={!agreement}>Save & generate receipt</button></div></form></Sheet>;
+  return <Sheet title="Receive rent payment" subtitle="One receipt can settle several monthly rent bills." onClose={onClose} wide><form onSubmit={submit}><Field label="Agreement"><select value={agreementId} onChange={(event) => resetAgreement(event.target.value)} required>{agreements.map((item) => { const rowTenant = workspace.tenants.find((tenantItem) => tenantItem.id === item.tenant_id); const rowProperty = workspace.properties.find((propertyItem) => propertyItem.id === item.property_id); return <option value={item.id} key={item.id}>{rowTenant?.name} · {rowProperty?.name} · {item.display_id}</option>; })}</select></Field>{agreement && <><div className="selection-summary"><div><span>Tenant</span><strong>{tenant?.name}</strong></div><div><span>Property</span><strong>{property?.name}</strong></div><div><span>Current credit</span><strong>{formatMoney(agreementCredit(workspace, agreement.id), workspace.settings.currency_symbol)}</strong></div></div><div className="field-grid"><Field label="Collection date"><input name="date" type="date" defaultValue={todayISO} required /></Field><Field label="Amount received"><input name="amount" type="number" inputMode="decimal" min="0.01" step="0.01" value={amount || ""} onChange={(event) => updateAmount(Number(event.target.value))} required /></Field></div><SectionHeading title="Payment allocation" action={<button className="text-button" type="button" onClick={() => setBillAllocations(allocateOldest(amount, openBills))}><RotateCcw size={14} />Oldest due first</button>} />{openBills.length ? <div className="payment-allocation-list">{openBills.map((bill) => <div className="payment-allocation-row" key={bill.id}><span><strong>{monthLabel(bill.rent_month)}</strong><small>{bill.display_id} · {formatMoney(rentBillRemaining(workspace, bill), workspace.settings.currency_symbol)} outstanding</small></span><input aria-label={`Amount applied to ${monthLabel(bill.rent_month)}`} type="number" inputMode="decimal" min="0" step="0.01" max={rentBillRemaining(workspace, bill)} value={billAllocations[bill.id] || ""} onChange={(event) => setBillAllocations((current) => ({ ...current, [bill.id]: Number(event.target.value) }))} /></div>)}</div> : <div className="inline-alert"><Info size={17} /><span>There are no open bills. This payment will remain as tenant credit and will automatically apply to the next bill.</span></div>}<div className="calculation-card"><div><span>Applied to rent bills</span><strong>{formatMoney(allocationTotal, workspace.settings.currency_symbol)}</strong></div><div><span>Remaining as tenant credit</span><strong>{formatMoney(unallocated, workspace.settings.currency_symbol)}</strong></div></div>{allocationInvalid && <div className="inline-alert inline-alert-danger"><CircleAlert size={17} />Allocated amounts cannot exceed the payment or a bill&apos;s outstanding balance.</div>}<Field label="Payment method"><select name="method" required defaultValue=""><option value="" disabled>Select a method</option>{workspace.paymentMethods.filter((item) => item.is_active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field><Field label="Collected by (optional)"><input name="collectedBy" defaultValue={workspace.profile.full_name} /></Field><Field label="Attachment"><input name="attachments" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple /></Field><Field label="Notes"><textarea name="notes" /></Field></>}<div className="sheet-actions"><button className="button button-secondary" type="button" onClick={onClose}>Cancel</button><button className="button button-primary" type="submit" disabled={!agreement || amount <= 0 || allocationInvalid}>Save & generate receipt</button></div></form></Sheet>;
+}
+
+function RentBillChargeForm({ workspace, service, billId, onClose, mutate }: { workspace: WorkspaceData; service: RentwiseDataService; billId: string; onClose: () => void; mutate: (operation: () => Promise<unknown>, success: string) => Promise<void> }) {
+  const bill = workspace.rentPeriods.find((item) => item.id === billId)!;
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); const form = new FormData(event.currentTarget);
+    await mutate(() => service.addRentBillCharge(workspace.profile.id, bill.id, String(form.get("reason") || "").trim(), safeNumber(form.get("amount"))), `Charge added to ${bill.display_id}`);
+  }
+  return <Sheet title="Add bill charge" subtitle={`${bill.display_id} · ${monthLabel(bill.rent_month)}`} onClose={onClose}><form onSubmit={submit}><Field label="Charge reason"><input name="reason" required /></Field><Field label="Amount"><input name="amount" type="number" inputMode="decimal" min="0.01" step="0.01" required /></Field><div className="sheet-actions"><button className="button button-secondary" type="button" onClick={onClose}>Cancel</button><button className="button button-primary" type="submit">Add charge</button></div></form></Sheet>;
 }
 
 function ExpenseForm({ workspace, service, onClose, mutate }: { workspace: WorkspaceData; service: RentwiseDataService; onClose: () => void; mutate: (operation: () => Promise<unknown>, success: string) => Promise<void> }) {

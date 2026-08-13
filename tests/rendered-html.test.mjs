@@ -84,3 +84,28 @@ test("database migration enforces isolated IDs and atomic financial writes", asy
   ]) assert.match(sql, pattern);
   assert.doesNotMatch(sql, /return\s+p_prefix\s*\|\|\s*'-'/i);
 });
+
+test("rent billing upgrade preserves monthly obligations and allocates multi-bill payments", async () => {
+  const [sql, app, service] = await Promise.all([
+    readFile(new URL("../supabase/migrations/202608140001_rent_billing.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/rentwise-app.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/data-service.ts", import.meta.url), "utf8"),
+  ]);
+  for (const pattern of [
+    /create table if not exists public\.rent_payment_allocations/,
+    /unique\(receipt_id, rent_period_id\)/,
+    /create or replace function public\.ensure_rent_bills/,
+    /create or replace function public\.record_rent_payment/,
+    /create or replace function public\.apply_available_rent_credit/,
+    /'rent_bill', 'INV', 6/,
+    /A payment allocation exceeds the bill balance/,
+    /rentwise-generate-monthly-bills/,
+  ]) assert.match(sql, pattern);
+  assert.match(app, /Rent bills & payments/);
+  assert.match(app, /Oldest due first/);
+  assert.match(app, /Remaining as tenant credit/);
+  assert.match(app, /Payments applied to this bill/);
+  assert.match(service, /rentBillRemaining/);
+  assert.match(service, /receiptAllocations/);
+  assert.doesNotMatch(sql, /'INV-'/);
+});

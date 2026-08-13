@@ -47,7 +47,11 @@ test("mobile design keeps restrained geometry, fixed navigation, themes and redu
   assert.match(css, /\.charge-row\s*\{[^}]*44px/s);
   assert.match(css, /\.detail-footer \.button\s*\{[^}]*min-width:\s*156px/s);
   assert.match(css, /input\[type="date"\][^{]*\{[^}]*min-inline-size:\s*0/s);
+  assert.match(css, /input\[type="date"\][^{]*\{[^}]*-webkit-appearance:\s*none/s);
+  assert.match(css, /::-webkit-date-and-time-value/);
   assert.match(css, /\.sheet-body\s*\{[^}]*overflow-x:\s*hidden/s);
+  assert.match(css, /\.sheet-actions\s*\{[^}]*position:\s*static/s);
+  assert.doesNotMatch(css, /\.sheet-actions\s*\{[^}]*position:\s*sticky/s);
   assert.match(css, /\.sheet-actions\s*\{[^}]*minmax\(0,\s*\.8fr\)/s);
   assert.match(css, /:root\[data-theme="dark"\]/);
   assert.match(css, /\.theme-options/);

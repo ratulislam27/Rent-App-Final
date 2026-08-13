@@ -64,6 +64,9 @@ test("mobile design keeps restrained geometry, fixed navigation, themes and redu
   assert.match(app, /metric-occupied/);
   assert.match(app, /metric-vacant/);
   assert.match(app, /metric-expenses/);
+  assert.match(app, /Overall due through today/);
+  assert.match(app, /Tenant balances/);
+  assert.match(app, /tenant-progress-row/);
   assert.match(app, /Remove property allocation/);
   assert.match(app, /body\.style\.position\s*=\s*"fixed"/);
   assert.match(app, /window\.scrollTo\(0, scrollY\)/);

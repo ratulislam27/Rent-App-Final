@@ -551,7 +551,7 @@ function MorePage({ workspace, service, navigate, signOut }: { workspace: Worksp
 }
 
 function HomePage(props: PageProps) {
-  const { workspace, openForm, setDetail, navigate } = props;
+  const { workspace, service, openForm, setDetail, navigate } = props;
   const symbol = workspace.settings.currency_symbol;
   const currentDueBills = workspace.rentPeriods.filter((bill) => !bill.voided_at && bill.due_date.startsWith(currentMonth));
   const expected = currentDueBills.reduce((sum, bill) => sum + rentBillTotal(workspace, bill), 0);
@@ -561,6 +561,17 @@ function HomePage(props: PageProps) {
   const percent = expected ? Math.min(100, Math.round((collected / expected) * 100)) : 0;
   const occupied = workspace.properties.filter((property) => !property.archived_at && property.status === "occupied").length;
   const vacant = workspace.properties.filter((property) => !property.archived_at && property.status === "vacant").length;
+  const tenantBalances = workspace.tenants.map((tenant) => {
+    const agreements = workspace.agreements.filter((agreement) => agreement.tenant_id === tenant.id);
+    const agreementIds = new Set(agreements.map((agreement) => agreement.id));
+    const dueBills = workspace.rentPeriods.filter((bill) => !bill.voided_at && bill.due_date <= todayISO && agreementIds.has(bill.agreement_id));
+    const billed = dueBills.reduce((sum, bill) => sum + rentBillTotal(workspace, bill), 0);
+    const due = dueBills.reduce((sum, bill) => sum + rentBillRemaining(workspace, bill), 0);
+    const collected = Math.max(0, billed - due);
+    const progress = billed ? Math.min(100, Math.round((collected / billed) * 100)) : 0;
+    const hasCurrentAgreement = agreements.some((agreement) => !agreement.archived_at && agreementStatus(agreement, todayISO) === "active");
+    return { tenant, billed, collected, due, progress, hasCurrentAgreement, hasAgreement: agreements.length > 0 };
+  }).filter((row) => row.hasAgreement && (row.hasCurrentAgreement || row.billed > 0)).sort((a, b) => b.due - a.due || a.tenant.name.localeCompare(b.tenant.name));
   const attention = workspace.rentPeriods
     .filter((bill) => !bill.voided_at && rentBillRemaining(workspace, bill) > 0)
     .sort((a, b) => a.due_date.localeCompare(b.due_date))
@@ -575,7 +586,16 @@ function HomePage(props: PageProps) {
     <section className="monthly-summary">
       <div className="summary-lead"><span>Collected this month</span><strong>{formatMoney(collected, symbol)}</strong><small>of {formatMoney(expected, symbol)} expected</small></div>
       <div className="summary-progress"><div><span style={{ width: `${percent}%` }} /></div><strong>{percent}%</strong></div>
-      <div className="summary-balance"><span>Remaining</span><strong>{formatMoney(remaining, symbol)}</strong></div>
+      <div className="summary-balance"><span>Overall due through today</span><strong className={remaining > 0 ? "text-danger" : "positive-value"}>{remaining > 0 ? formatMoney(remaining, symbol) : "All paid"}</strong></div>
+      <div className="tenant-progress-summary">
+        <div className="tenant-progress-heading"><div><strong>Tenant balances</strong><small>Overall collection progress through today</small></div><button className="text-button" type="button" onClick={() => navigate("tenants")}>View tenants</button></div>
+        {tenantBalances.length ? <div className="tenant-progress-list">{tenantBalances.map(({ tenant, billed, collected: tenantCollected, due, progress }) => <button className="tenant-progress-row" type="button" key={tenant.id} onClick={() => setDetail({ kind: "tenant", id: tenant.id })}>
+          <ProfileAvatar name={tenant.name} path={tenant.profile_image_path} service={service} />
+          <span className="tenant-progress-copy"><strong>{tenant.name}</strong><small>{billed > 0 ? `${formatMoney(tenantCollected, symbol)} of ${formatMoney(billed, symbol)} collected` : "No rent billed yet"}</small></span>
+          <span className="tenant-progress-amount"><strong className={due > 0 ? "text-danger" : "positive-value"}>{due > 0 ? formatMoney(due, symbol) : "All paid"}</strong><small>{billed > 0 ? `${progress}% collected` : "Current tenant"}</small></span>
+          <span className="tenant-progress-track" aria-hidden="true"><span className={due <= 0 && billed > 0 ? "is-complete" : ""} style={{ width: `${progress}%` }} /></span>
+        </button>)}</div> : <div className="tenant-progress-empty"><Users size={18} /><span>Tenant balances will appear after an agreement generates its first rent bill.</span></div>}
+      </div>
     </section>
     <div className="metric-grid">
       <button type="button" className="metric metric-tone metric-occupied" onClick={() => navigate("properties")}><span>Occupied</span><strong>{occupied}</strong><small>properties</small></button>

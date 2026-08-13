@@ -189,6 +189,28 @@ input[type="file"] { padding: 8px; }
 .summary-balance { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding-top: 15px; border-top: 1px solid var(--line); }
 .summary-balance span { color: var(--text-soft); font-size: 12px; }
 .summary-balance strong { font-size: 18px; }
+.tenant-progress-summary { grid-column: 1 / -1; min-width: 0; padding-top: 17px; border-top: 1px solid var(--line); }
+.tenant-progress-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 5px; }
+.tenant-progress-heading > div { min-width: 0; }
+.tenant-progress-heading strong, .tenant-progress-heading small { display: block; }
+.tenant-progress-heading strong { font-size: 14px; font-weight: 640; }
+.tenant-progress-heading small { margin-top: 3px; color: var(--text-soft); font-size: 10px; }
+.tenant-progress-list { min-width: 0; }
+.tenant-progress-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 7px 11px; width: 100%; min-width: 0; border: 0; border-bottom: 1px solid var(--line); padding: 12px 0; text-align: left; color: var(--text); background: transparent; cursor: pointer; }
+.tenant-progress-row:last-child { border-bottom: 0; padding-bottom: 1px; }
+.tenant-progress-row:hover { background: var(--surface-soft); }
+.tenant-progress-copy { min-width: 0; }
+.tenant-progress-copy strong, .tenant-progress-copy small, .tenant-progress-amount strong, .tenant-progress-amount small { display: block; }
+.tenant-progress-copy strong, .tenant-progress-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tenant-progress-copy strong { font-size: 12px; font-weight: 610; }
+.tenant-progress-copy small, .tenant-progress-amount small { margin-top: 3px; color: var(--text-soft); font-size: 10px; }
+.tenant-progress-amount { min-width: 86px; text-align: right; }
+.tenant-progress-amount strong { font-size: 12px; font-weight: 620; }
+.tenant-progress-track { grid-column: 2 / -1; height: 4px; overflow: hidden; border-radius: 99px; background: var(--surface-soft); }
+.tenant-progress-track > span { display: block; height: 100%; border-radius: inherit; background: var(--red); transition: width 280ms cubic-bezier(.2,.8,.2,1); }
+.tenant-progress-track > span.is-complete { background: var(--green); }
+.tenant-progress-empty { display: flex; align-items: center; gap: 9px; margin-top: 12px; padding: 12px; border-radius: var(--radius-sm); color: var(--text-soft); background: var(--surface-soft); font-size: 11px; line-height: 1.4; }
+.tenant-progress-empty svg { flex: 0 0 auto; }
 .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
 .metric { min-width: 0; min-height: 100px; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 14px; text-align: left; color: var(--text); background: var(--surface); cursor: pointer; }
 .metric span, .metric small { display: block; overflow: hidden; color: var(--text-soft); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }

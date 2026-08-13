@@ -4,9 +4,9 @@ Rentwise is a mobile-first, installable rent-management PWA for landlords. Each 
 
 ## Production stack
 
-- Next.js-compatible React application built with vinext
+- Next.js application with a standard Vercel production build
 - Supabase Auth, PostgreSQL, Row Level Security and private Storage
-- Cloudflare Sites deployment, with portable application code and external Supabase data
+- Vercel deployment, with an optional Cloudflare Sites build retained as a fallback
 - Geist typography, Lucide icons and a responsive app shell
 
 If Supabase environment variables are absent, the application starts in an interactive sample workspace. Sample changes intentionally reset on reload.
@@ -75,6 +75,6 @@ Unused properties and tenants may be permanently deleted. Once connected to an a
 
 ## Deployment
 
-Set the same three environment variables in the hosting platform, run `npm run build`, and deploy. The repository includes `.openai/hosting.json` for Cloudflare Sites. The app exposes `/api/health` for deployment checks.
+Set the same three environment variables in Vercel, import the GitHub repository, and deploy. The default `npm run build` command produces the Vercel-ready Next.js build. `npm run build:sites` remains available for the previous Cloudflare Sites target. The app exposes `/api/health` for deployment checks.
 
 After deployment, verify signup, login, admin password reset, one rent receipt, one multi-property expense, private attachment access, report printing and Add to Home Screen on both iOS and Android.

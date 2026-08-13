@@ -191,8 +191,7 @@ input[type="file"] { padding: 8px; }
   --metric-soft: var(--blue-soft);
   background: linear-gradient(145deg, var(--surface) 48%, color-mix(in srgb, var(--metric-soft) 72%, var(--surface)));
 }
-.metric-tone > span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--metric-color); font-weight: 590; }
-.metric-tone > span:first-child::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ""; }
+.metric-tone > span:first-child { color: var(--metric-color); font-weight: 590; }
 .metric-tone > strong { color: var(--metric-color); }
 .metric-occupied { --metric-color: var(--green); --metric-soft: var(--green-soft); }
 .metric-vacant { --metric-color: var(--amber); --metric-soft: var(--amber-soft); }

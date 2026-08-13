@@ -7,7 +7,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 const themeBootScript = `(function(){var preference="system";try{preference=localStorage.getItem("rentwise-theme")||"system";}catch(error){}var dark=preference==="dark"||(preference==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);var theme=dark?"dark":"light";document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;})();`;
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://rent-app-final.vercel.app"),
+  metadataBase: new URL("https://rentratul.vercel.app"),
   applicationName: "Rento",
   title: { default: "Rento", template: "%s · Rento" },
   description: "Mobile-first rent management for landlords.",

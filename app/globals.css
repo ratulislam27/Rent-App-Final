@@ -155,7 +155,6 @@ input[type="file"] { padding: 8px; }
 .account-popover button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; border: 0; border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; background: transparent; font-size: 13px; cursor: pointer; }
 .account-popover button:last-child { border-bottom: 0; }
 .account-popover button:hover { background: var(--surface-soft); }
-.rotate-90 { transform: rotate(90deg); }
 
 .demo-banner { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 7px 14px; color: var(--amber); background: var(--amber-soft); font-size: 11px; font-weight: 520; }
 .global-alert { position: sticky; z-index: 14; top: 62px; display: flex; align-items: center; gap: 9px; max-width: 720px; margin: 10px auto 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--red) 25%, transparent); border-radius: var(--radius-sm); color: var(--red); background: var(--red-soft); font-size: 12px; }

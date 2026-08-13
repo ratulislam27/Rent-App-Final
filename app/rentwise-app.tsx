@@ -56,7 +56,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import {
   agreementCredit,
@@ -302,7 +302,25 @@ function AppearanceToggle({ theme, onToggle, className }: { theme: ResolvedTheme
 function AppHeader({ workspace, route, theme, onToggleTheme, onSettings, onAdmin, onSignOut }: { workspace: WorkspaceData; route: Route; theme: ResolvedTheme; onToggleTheme: () => void; onSettings: () => void; onAdmin: () => void; onSignOut: () => void }) {
   const titleMap: Record<Route, string> = { home: "Home", properties: "Properties", tenants: "Tenants", collections: "Collections", more: "More", agreements: "Agreements", expenses: "Expenses", reports: "Reports", settings: "Settings", admin: "Administrator" };
   const [menuOpen, setMenuOpen] = useState(false);
-  return <header className="app-header"><div className="mobile-brand">{titleMap[route]}</div><div className="desktop-page-title">{titleMap[route]}</div><div className="header-controls"><AppearanceToggle theme={theme} onToggle={onToggleTheme} /><div className="account-menu-wrap"><button className="account-button" type="button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen}><span className="avatar">{initials(workspace.profile.full_name)}</span><span className="account-copy"><strong>{workspace.profile.full_name}</strong><small>{workspace.profile.email}</small></span><ChevronRight className={menuOpen ? "rotate-90" : ""} size={16} /></button>{menuOpen && <div className="account-popover"><button type="button" onClick={() => { setMenuOpen(false); onSettings(); }}><Settings size={17} />Settings</button>{workspace.profile.is_admin && <button type="button" onClick={() => { setMenuOpen(false); onAdmin(); }}><ShieldCheck size={17} />Administrator</button>}<button type="button" onClick={onSignOut}><LogOut size={17} />Sign out</button></div>}</div></div></header>;
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    const closeWithEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeWithEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeWithEscape);
+    };
+  }, [menuOpen]);
+
+  return <header className="app-header"><div className="mobile-brand">{titleMap[route]}</div><div className="desktop-page-title">{titleMap[route]}</div><div className="header-controls"><AppearanceToggle theme={theme} onToggle={onToggleTheme} /><div className="account-menu-wrap" ref={menuRef}><button className="account-button" type="button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-haspopup="menu"><span className="avatar">{initials(workspace.profile.full_name)}</span><span className="account-copy"><strong>{workspace.profile.full_name}</strong><small>{workspace.profile.email}</small></span></button>{menuOpen && <div className="account-popover" role="menu"><button role="menuitem" type="button" onClick={() => { setMenuOpen(false); onSettings(); }}><Settings size={17} />Settings</button>{workspace.profile.is_admin && <button role="menuitem" type="button" onClick={() => { setMenuOpen(false); onAdmin(); }}><ShieldCheck size={17} />Administrator</button>}<button role="menuitem" type="button" onClick={onSignOut}><LogOut size={17} />Sign out</button></div>}</div></div></header>;
 }
 
 export default function RentwiseApp() {

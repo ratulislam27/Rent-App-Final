@@ -1,6 +1,6 @@
-# Rentwise
+# Rento
 
-Rentwise is a mobile-first, installable rent-management PWA for landlords. Each landlord has an isolated workspace for properties, tenants, agreements, rent collection, receipts, expenses and reports. A single platform administrator can manage account access without ever seeing an existing password.
+Rento is a mobile-first, installable rent-management PWA for landlords. Each landlord has an isolated workspace for properties, tenants, agreements, rent collection, receipts, expenses and reports. A single platform administrator can manage account access without ever seeing an existing password.
 
 ## Production stack
 
@@ -13,7 +13,7 @@ If Supabase environment variables are absent, the application starts in an inter
 
 ## Production status
 
-The hosted Rentwise project is connected to its own Supabase backend. The initial schema, private attachment bucket, email/password authentication settings and single administrator role have been applied. Deployment secrets are managed by the hosting platform and are intentionally not committed to this repository.
+The hosted Rento project is connected to its own Supabase backend. The initial schema, private attachment bucket, email/password authentication settings and single administrator role have been applied. Deployment secrets are managed by the hosting platform and are intentionally not committed to this repository.
 
 ## Local browser test
 

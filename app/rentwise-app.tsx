@@ -202,7 +202,7 @@ function Toast({ message }: { message: string }) {
 }
 
 function LoadingScreen() {
-  return <main className="loading-screen"><strong className="loading-wordmark">Rentwise</strong><LoaderCircle className="spin" size={24} /><span>Preparing your workspace</span></main>;
+  return <main className="loading-screen"><strong className="loading-wordmark">Rento</strong><LoaderCircle className="spin" size={24} /><span>Preparing your workspace</span></main>;
 }
 
 function AuthScreen({ service, theme, onToggleTheme, onDemo, onAuthenticated }: { service: RentwiseDataService; theme: ResolvedTheme; onToggleTheme: () => void; onDemo: () => void; onAuthenticated: (user: User) => void }) {
@@ -247,7 +247,7 @@ function AuthScreen({ service, theme, onToggleTheme, onDemo, onAuthenticated }: 
   return <main className="auth-page">
     <AppearanceToggle theme={theme} onToggle={onToggleTheme} className="auth-theme-toggle" />
     <section className="auth-intro">
-      <div className="brand-lockup">Rentwise</div>
+      <div className="brand-lockup">Rento</div>
       <div className="auth-copy"><p className="eyebrow">Landlord workspace</p><h1>Rental management, without the clutter.</h1><p>Keep properties, tenants, agreements, rent receipts and expenses organized in one private workspace.</p></div>
       <div className="auth-points"><span><CircleCheck size={17} />Clear monthly balances</span><span><ShieldCheck size={17} />Private account data</span><span><FileDown size={17} />Printable receipts and reports</span></div>
     </section>
@@ -281,7 +281,7 @@ const navItems: Array<{ route: MainRoute; label: string; icon: LucideIcon }> = [
 function Navigation({ route, onNavigate }: { route: Route; onNavigate: (route: Route) => void }) {
   return <>
     <aside className="desktop-nav">
-      <div className="brand-lockup">Rentwise</div>
+      <div className="brand-lockup">Rento</div>
       <nav aria-label="Main navigation">
         {navItems.map(({ route: itemRoute, label, icon: Icon }) => <button key={itemRoute} className={cn("nav-item", route === itemRoute && "is-active")} type="button" onClick={() => onNavigate(itemRoute)}><Icon size={19} strokeWidth={1.8} /><span>{label}</span></button>)}
         <div className="nav-divider" />
@@ -752,7 +752,7 @@ function ReportsPage({ workspace }: PageProps) {
 
   return <><PageHeading eyebrow="Printable records" title="Reports" subtitle="Filter the information you need, then print or save it as a PDF." action={<div className="heading-actions no-print"><button className="button button-secondary" type="button" onClick={() => window.print()}><Printer size={16} />Print</button><button className="button button-primary" type="button" onClick={() => window.print()}><Download size={16} />Save PDF</button></div>} />
     <div className="report-picker no-print"><Field label="Report"><select value={report} onChange={(event) => { setReport(event.target.value as typeof report); setEntity("all"); }}>{Object.entries(titleMap).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field><Field label="Period"><select value={periodMode} onChange={(event) => setPeriodMode(event.target.value as typeof periodMode)}><option value="month">Month</option><option value="year">Year</option><option value="custom">Custom dates</option></select></Field>{periodMode === "month" && <Field label="Month"><input type="month" value={month} onChange={(event) => setMonth(event.target.value)} /></Field>}{periodMode === "year" && <Field label="Year"><input type="number" min="2000" max="2100" value={year} onChange={(event) => setYear(event.target.value)} /></Field>}{periodMode === "custom" && <><Field label="From"><input type="date" value={fromDate} max={toDate} onChange={(event) => setFromDate(event.target.value)} /></Field><Field label="To"><input type="date" value={toDate} min={fromDate} onChange={(event) => setToDate(event.target.value)} /></Field></>}{["tenant", "property", "agreement"].includes(report) && <Field label={report[0].toUpperCase() + report.slice(1)}><select value={entity} onChange={(event) => setEntity(event.target.value)}><option value="all">All {report}s</option>{entityOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>}</div>
-    <article className="report-paper"><header className="report-header"><div><span className="eyebrow">Rentwise report</span><h2>{titleMap[report]}</h2><p>{periodLabel} · Generated {formatDate(todayISO)}</p></div><div className="report-owner"><strong>{workspace.settings.receipt_name || workspace.profile.full_name}</strong><span>{workspace.settings.receipt_phone}</span></div></header>
+    <article className="report-paper"><header className="report-header"><div><span className="eyebrow">Rento report</span><h2>{titleMap[report]}</h2><p>{periodLabel} · Generated {formatDate(todayISO)}</p></div><div className="report-owner"><strong>{workspace.settings.receipt_name || workspace.profile.full_name}</strong><span>{workspace.settings.receipt_phone}</span></div></header>
       {report === "summary" && <><div className="report-totals"><div><span>Rent collected</span><strong>{formatMoney(income, symbol)}</strong></div><div><span>Expenses</span><strong>{formatMoney(expenses, symbol)}</strong></div><div><span>Net income</span><strong>{formatMoney(income - expenses, symbol)}</strong></div></div><ReportCollectionTable workspace={workspace} receipts={filteredReceipts} /><ReportExpenseTable workspace={workspace} expenses={filteredExpenses} /></>}
       {(report === "collections" || report === "tenant" || report === "property" || report === "agreement") && <ReportCollectionTable workspace={workspace} receipts={filteredReceipts} />}
       {report === "expenses" && <ReportExpenseTable workspace={workspace} expenses={filteredExpenses} />}
@@ -775,7 +775,7 @@ function SettingsPage({ workspace, openForm, service, notify, refresh, setConfir
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `rentwise-backup-${todayISO}.json`;
+    anchor.download = `rento-backup-${todayISO}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
     notify("Account backup downloaded");
@@ -787,7 +787,7 @@ function SettingsPage({ workspace, openForm, service, notify, refresh, setConfir
     reader.onload = () => {
       try {
         const backup = JSON.parse(String(reader.result)) as { product?: string; version?: number; data?: WorkspaceData };
-        if (backup.product !== "Rentwise" || backup.version !== 1 || !backup.data?.profile || !Array.isArray(backup.data.properties)) throw new Error();
+        if (!["Rento", "Rentwise"].includes(backup.product || "") || ![1, 2].includes(backup.version || 0) || !backup.data?.profile || !Array.isArray(backup.data.properties)) throw new Error();
         setConfirm({
           title: "Replace this account from backup?",
           text: "All current records in this landlord account will be replaced. Attached files already stored in this account remain available.",
@@ -801,7 +801,7 @@ function SettingsPage({ workspace, openForm, service, notify, refresh, setConfir
             notify("Account restored from backup");
           },
         });
-      } catch { notify("This is not a valid Rentwise backup"); }
+      } catch { notify("This is not a valid Rento backup"); }
     };
     reader.readAsText(file);
   };

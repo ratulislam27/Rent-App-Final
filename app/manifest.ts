@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Rentwise — Landlord Rent Management",
-    short_name: "Rentwise",
+    name: "Rento — Landlord Rent Management",
+    short_name: "Rento",
     description: "Manage properties, tenants, agreements, rent receipts and expenses.",
     start_url: "/",
     display: "standalone",

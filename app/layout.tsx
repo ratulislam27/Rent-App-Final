@@ -7,19 +7,19 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 const themeBootScript = `(function(){var preference="system";try{preference=localStorage.getItem("rentwise-theme")||"system";}catch(error){}var dark=preference==="dark"||(preference==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);var theme=dark?"dark":"light";document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;})();`;
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://rentwise-app.pages.dev"),
-  applicationName: "Rentwise",
-  title: { default: "Rentwise", template: "%s · Rentwise" },
+  metadataBase: new URL("https://rent-app-final.vercel.app"),
+  applicationName: "Rento",
+  title: { default: "Rento", template: "%s · Rento" },
   description: "Mobile-first rent management for landlords.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Rentwise" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Rento" },
   formatDetection: { telephone: false },
   icons: { icon: "/favicon.svg?v=2", shortcut: "/favicon.svg?v=2", apple: "/apple-touch-icon-v2.png" },
   openGraph: {
     type: "website",
-    title: "Rentwise — Rental management, made clear",
+    title: "Rento — Rental management, made clear",
     description: "A private mobile workspace for landlords.",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Rentwise landlord rent management" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Rento landlord rent management" }],
   },
   twitter: { card: "summary_large_image", images: ["/og.png"] },
 };

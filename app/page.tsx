@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import RentwiseApp from "./rentwise-app";
 
 export const metadata: Metadata = {
-  title: "Rentwise — Rental management for landlords",
+  title: "Rento — Rental management for landlords",
   description: "A private, mobile-first workspace for properties, tenants, agreements, rent receipts, expenses and reports.",
 };
 

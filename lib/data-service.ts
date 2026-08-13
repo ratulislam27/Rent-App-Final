@@ -421,7 +421,7 @@ export class RentwiseDataService {
   }
 
   exportBackup(workspace: WorkspaceData) {
-    return JSON.stringify({ product: "Rentwise", version: 2, exportedAt: new Date().toISOString(), data: workspace }, null, 2);
+    return JSON.stringify({ product: "Rento", version: 2, exportedAt: new Date().toISOString(), data: workspace }, null, 2);
   }
 
   async restoreBackup(data: WorkspaceData, confirmation: string) {

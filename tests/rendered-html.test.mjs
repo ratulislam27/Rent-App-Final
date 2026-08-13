@@ -13,12 +13,12 @@ async function render(path = "/") {
   );
 }
 
-test("server-renders the Rentwise application shell", async () => {
+test("server-renders the Rento application shell", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
-  assert.match(html, /<title>Rentwise/);
+  assert.match(html, /<title>Rento/);
   assert.match(html, /manifest\.webmanifest/);
   assert.match(html, /apple-touch-icon-v2\.png/);
   assert.doesNotMatch(html, /Your site is taking shape|SkeletonPreview|react-loading-skeleton/);
@@ -29,7 +29,7 @@ test("health endpoint reports a ready service", async () => {
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.status, "ok");
-  assert.equal(body.service, "rentwise");
+  assert.equal(body.service, "rento");
   assert.match(body.timestamp, /^\d{4}-\d{2}-\d{2}T/);
 });
 
@@ -59,7 +59,9 @@ test("mobile design keeps restrained geometry, fixed navigation, themes and redu
   assert.match(app, /metric-expenses/);
   assert.match(app, /Remove property allocation/);
   assert.match(layout, /themeBootScript/);
+  assert.match(layout, /applicationName:\s*"Rento"/);
   assert.match(manifest, /display:\s*"standalone"/);
+  assert.match(manifest, /short_name:\s*"Rento"/);
   assert.match(manifest, /icon-512-v2\.png/);
   assert.match(manifest, /purpose:\s*"maskable"/);
 });
@@ -107,5 +109,7 @@ test("rent billing upgrade preserves monthly obligations and allocates multi-bil
   assert.match(app, /Payments applied to this bill/);
   assert.match(service, /rentBillRemaining/);
   assert.match(service, /receiptAllocations/);
+  assert.match(service, /product:\s*"Rento"/);
+  assert.match(app, /\["Rento", "Rentwise"\]/);
   assert.doesNotMatch(sql, /'INV-'/);
 });

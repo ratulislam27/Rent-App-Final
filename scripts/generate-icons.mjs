@@ -12,4 +12,4 @@ const outputs = [
 ];
 
 await Promise.all(outputs.map(([size, destination]) => sharp(source).resize(size, size).png().toFile(destination)));
-console.log("Generated Rentwise PWA icons.");
+console.log("Generated Rento PWA icons.");

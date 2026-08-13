@@ -11,7 +11,7 @@ const overlay = Buffer.from(`
     <path d="M21 46V18.5h12.25c6.5 0 10.75 3.85 10.75 9.75S39.75 38 33.25 38H21M33.5 38 44.5 46.5" fill="none" stroke="#1d2a3d" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
     <circle cx="45" cy="18.5" r="1.8" fill="#3478e5"/>
   </g>
-  <text x="140" y="122" fill="#17191d" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" letter-spacing="-1.2">Rentwise</text>
+  <text x="140" y="122" fill="#17191d" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" letter-spacing="-1.2">Rento</text>
   <text x="76" y="255" fill="#17191d" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700" letter-spacing="-2.5">
     <tspan x="76" dy="0">Rental management,</tspan>
     <tspan x="76" dy="66">made clear.</tspan>

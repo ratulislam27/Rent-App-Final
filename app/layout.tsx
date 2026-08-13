@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Rento" },
   formatDetection: { telephone: false },
-  icons: { icon: "/favicon.svg?v=2", shortcut: "/favicon.svg?v=2", apple: "/apple-touch-icon-v2.png" },
+  icons: { icon: "/favicon-v3.svg", shortcut: "/favicon-v3.svg", apple: "/apple-touch-icon-v3.png" },
   openGraph: {
     type: "website",
     title: "Rento — Rental management, made clear",

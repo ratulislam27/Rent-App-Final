@@ -1,5 +1,5 @@
-const CACHE = "rento-shell-v2";
-const SHELL = ["/", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png", "/icon-512.png"];
+const CACHE = "rento-shell-v3";
+const SHELL = ["/", "/manifest.webmanifest", "/favicon-v3.svg", "/icon-192-v3.png", "/icon-512-v3.png", "/apple-touch-icon-v3.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));

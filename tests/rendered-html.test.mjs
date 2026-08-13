@@ -20,7 +20,7 @@ test("server-renders the Rento application shell", async () => {
   const html = await response.text();
   assert.match(html, /<title>Rento/);
   assert.match(html, /manifest\.webmanifest/);
-  assert.match(html, /apple-touch-icon-v2\.png/);
+  assert.match(html, /apple-touch-icon-v3\.png/);
   assert.doesNotMatch(html, /Your site is taking shape|SkeletonPreview|react-loading-skeleton/);
 });
 
@@ -62,7 +62,8 @@ test("mobile design keeps restrained geometry, fixed navigation, themes and redu
   assert.match(layout, /applicationName:\s*"Rento"/);
   assert.match(manifest, /display:\s*"standalone"/);
   assert.match(manifest, /short_name:\s*"Rento"/);
-  assert.match(manifest, /icon-512-v2\.png/);
+  assert.match(manifest, /icon-512-v3\.png/);
+  assert.match(manifest, /icon-192-v3\.png/);
   assert.match(manifest, /purpose:\s*"maskable"/);
 });
 

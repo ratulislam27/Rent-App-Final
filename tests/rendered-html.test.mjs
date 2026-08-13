@@ -46,6 +46,9 @@ test("mobile design keeps restrained geometry, fixed navigation, themes and redu
   assert.match(css, /--bottom-safe-space:\s*max\(env\(safe-area-inset-bottom\),\s*12px\)/);
   assert.match(css, /\.charge-row\s*\{[^}]*44px/s);
   assert.match(css, /\.detail-footer \.button\s*\{[^}]*min-width:\s*156px/s);
+  assert.match(css, /input\[type="date"\][^{]*\{[^}]*min-inline-size:\s*0/s);
+  assert.match(css, /\.sheet-body\s*\{[^}]*overflow-x:\s*hidden/s);
+  assert.match(css, /\.sheet-actions\s*\{[^}]*minmax\(0,\s*\.8fr\)/s);
   assert.match(css, /:root\[data-theme="dark"\]/);
   assert.match(css, /\.theme-options/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
@@ -58,6 +61,8 @@ test("mobile design keeps restrained geometry, fixed navigation, themes and redu
   assert.match(app, /metric-vacant/);
   assert.match(app, /metric-expenses/);
   assert.match(app, /Remove property allocation/);
+  assert.match(app, /body\.style\.position\s*=\s*"fixed"/);
+  assert.match(app, /window\.scrollTo\(0, scrollY\)/);
   assert.match(layout, /themeBootScript/);
   assert.match(layout, /applicationName:\s*"Rento"/);
   assert.match(manifest, /display:\s*"standalone"/);

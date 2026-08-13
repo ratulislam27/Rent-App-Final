@@ -340,6 +340,7 @@ export default function RentwiseApp() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(Boolean(client));
   const [themeState, setThemeState] = useState<{ preference: ThemePreference; resolved: ResolvedTheme }>({ preference: "system", resolved: "light" });
+  const modalOpen = Boolean(form || confirm || workspace?.profile.force_password_change);
 
   const notify = useCallback((message: string) => { setToast(message); window.setTimeout(() => setToast(""), 2600); }, []);
   const chooseTheme = useCallback((preference: ThemePreference) => {
@@ -373,6 +374,35 @@ export default function RentwiseApp() {
   useEffect(() => {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") navigator.serviceWorker.register("/sw.js").catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const previous = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    };
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+    return () => {
+      body.style.position = previous.position;
+      body.style.top = previous.top;
+      body.style.left = previous.left;
+      body.style.right = previous.right;
+      body.style.width = previous.width;
+      body.style.overflow = previous.overflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [modalOpen]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");

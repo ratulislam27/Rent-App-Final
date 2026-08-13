@@ -11,6 +11,10 @@ Rentwise is a mobile-first, installable rent-management PWA for landlords. Each 
 
 If Supabase environment variables are absent, the application starts in an interactive sample workspace. Sample changes intentionally reset on reload.
 
+## Production status
+
+The hosted Rentwise project is connected to its own Supabase backend. The initial schema, private attachment bucket, email/password authentication settings and single administrator role have been applied. Deployment secrets are managed by the hosting platform and are intentionally not committed to this repository.
+
 ## Local browser test
 
 Requires Node.js 22.13 or newer.

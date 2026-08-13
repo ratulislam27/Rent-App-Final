@@ -4,6 +4,7 @@ import "./globals.css";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"], display: "swap" });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
+const themeBootScript = `(function(){var preference="system";try{preference=localStorage.getItem("rentwise-theme")||"system";}catch(error){}var dark=preference==="dark"||(preference==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);var theme=dark?"dark":"light";document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;})();`;
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://rentwise-app.pages.dev"),
@@ -35,5 +36,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" suppressHydrationWarning><body className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>{children}</body></html>;
+  return <html lang="en" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{ __html: themeBootScript }} /></head><body className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>{children}</body></html>;
 }

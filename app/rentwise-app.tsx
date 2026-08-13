@@ -30,6 +30,8 @@ import {
   LockKeyhole,
   LogOut,
   Menu,
+  Monitor,
+  Moon,
   Pencil,
   Phone,
   Plus,
@@ -42,6 +44,7 @@ import {
   Share2,
   ShieldCheck,
   Store,
+  Sun,
   Tags,
   Trash2,
   Upload,
@@ -73,6 +76,8 @@ type MainRoute = "home" | "properties" | "tenants" | "collections" | "more";
 type Route = MainRoute | "agreements" | "expenses" | "reports" | "settings" | "admin";
 type Detail = { kind: "property" | "tenant" | "agreement" | "receipt" | "expense"; id: string } | null;
 type FormKind = "property" | "tenant" | "agreement" | "collection" | "expense" | "increment" | "profile" | "receipt-settings" | "lookup" | "password" | null;
+type ThemePreference = "light" | "dark" | "system";
+type ResolvedTheme = "light" | "dark";
 
 const today = new Date();
 const todayISO = today.toISOString().slice(0, 10);
@@ -109,6 +114,20 @@ function shiftMonth(month: string, offset: number) {
   const [year, monthNumber] = month.split("-").map(Number);
   const date = new Date(Date.UTC(year, monthNumber - 1 + offset, 1));
   return date.toISOString().slice(0, 7);
+}
+
+function resolveTheme(preference: ThemePreference): ResolvedTheme {
+  if (preference === "light" || preference === "dark") return preference;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyDocumentTheme(theme: ResolvedTheme, animate = false) {
+  const root = document.documentElement;
+  if (animate) root.classList.add("theme-changing");
+  root.dataset.theme = theme;
+  root.style.colorScheme = theme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0d0e10" : "#f5f6f8");
+  if (animate) window.setTimeout(() => root.classList.remove("theme-changing"), 180);
 }
 
 function activeAgreement(workspace: WorkspaceData, propertyId?: string, tenantId?: string) {
@@ -166,7 +185,7 @@ function LoadingScreen() {
   return <main className="loading-screen"><div className="brand-mark"><Building2 size={22} /></div><LoaderCircle className="spin" size={24} /><span>Preparing your workspace</span></main>;
 }
 
-function AuthScreen({ service, onDemo, onAuthenticated }: { service: RentwiseDataService; onDemo: () => void; onAuthenticated: (user: User) => void }) {
+function AuthScreen({ service, theme, onToggleTheme, onDemo, onAuthenticated }: { service: RentwiseDataService; theme: ResolvedTheme; onToggleTheme: () => void; onDemo: () => void; onAuthenticated: (user: User) => void }) {
   const [mode, setMode] = useState<"login" | "register" | "admin">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -206,6 +225,7 @@ function AuthScreen({ service, onDemo, onAuthenticated }: { service: RentwiseDat
   }
 
   return <main className="auth-page">
+    <AppearanceToggle theme={theme} onToggle={onToggleTheme} className="auth-theme-toggle" />
     <section className="auth-intro">
       <div className="brand-lockup"><span className="brand-mark"><Building2 size={21} /></span><span>Rentwise</span></div>
       <div className="auth-copy"><p className="eyebrow">Landlord workspace</p><h1>Rental management, without the clutter.</h1><p>Keep properties, tenants, agreements, rent receipts and expenses organized in one private workspace.</p></div>
@@ -254,10 +274,15 @@ function Navigation({ route, onNavigate }: { route: Route; onNavigate: (route: R
   </>;
 }
 
-function AppHeader({ workspace, route, onSettings, onAdmin, onSignOut }: { workspace: WorkspaceData; route: Route; onSettings: () => void; onAdmin: () => void; onSignOut: () => void }) {
+function AppearanceToggle({ theme, onToggle, className }: { theme: ResolvedTheme; onToggle: () => void; className?: string }) {
+  const label = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+  return <button className={cn("appearance-toggle", className)} type="button" onClick={onToggle} aria-label={label} title={label}>{theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}</button>;
+}
+
+function AppHeader({ workspace, route, theme, onToggleTheme, onSettings, onAdmin, onSignOut }: { workspace: WorkspaceData; route: Route; theme: ResolvedTheme; onToggleTheme: () => void; onSettings: () => void; onAdmin: () => void; onSignOut: () => void }) {
   const titleMap: Record<Route, string> = { home: "Home", properties: "Properties", tenants: "Tenants", collections: "Collections", more: "More", agreements: "Agreements", expenses: "Expenses", reports: "Reports", settings: "Settings", admin: "Administrator" };
   const [menuOpen, setMenuOpen] = useState(false);
-  return <header className="app-header"><div className="mobile-brand"><span className="brand-mark"><Building2 size={18} /></span><span>{titleMap[route]}</span></div><div className="desktop-page-title">{titleMap[route]}</div><div className="account-menu-wrap"><button className="account-button" type="button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen}><span className="avatar">{initials(workspace.profile.full_name)}</span><span className="account-copy"><strong>{workspace.profile.full_name}</strong><small>{workspace.profile.email}</small></span><ChevronRight className={menuOpen ? "rotate-90" : ""} size={16} /></button>{menuOpen && <div className="account-popover"><button type="button" onClick={() => { setMenuOpen(false); onSettings(); }}><Settings size={17} />Settings</button>{workspace.profile.is_admin && <button type="button" onClick={() => { setMenuOpen(false); onAdmin(); }}><ShieldCheck size={17} />Administrator</button>}<button type="button" onClick={onSignOut}><LogOut size={17} />Sign out</button></div>}</div></header>;
+  return <header className="app-header"><div className="mobile-brand"><span className="brand-mark"><Building2 size={18} /></span><span>{titleMap[route]}</span></div><div className="desktop-page-title">{titleMap[route]}</div><div className="header-controls"><AppearanceToggle theme={theme} onToggle={onToggleTheme} /><div className="account-menu-wrap"><button className="account-button" type="button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen}><span className="avatar">{initials(workspace.profile.full_name)}</span><span className="account-copy"><strong>{workspace.profile.full_name}</strong><small>{workspace.profile.email}</small></span><ChevronRight className={menuOpen ? "rotate-90" : ""} size={16} /></button>{menuOpen && <div className="account-popover"><button type="button" onClick={() => { setMenuOpen(false); onSettings(); }}><Settings size={17} />Settings</button>{workspace.profile.is_admin && <button type="button" onClick={() => { setMenuOpen(false); onAdmin(); }}><ShieldCheck size={17} />Administrator</button>}<button type="button" onClick={onSignOut}><LogOut size={17} />Sign out</button></div>}</div></div></header>;
 }
 
 export default function RentwiseApp() {
@@ -276,8 +301,15 @@ export default function RentwiseApp() {
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(Boolean(client));
+  const [themeState, setThemeState] = useState<{ preference: ThemePreference; resolved: ResolvedTheme }>({ preference: "system", resolved: "light" });
 
   const notify = useCallback((message: string) => { setToast(message); window.setTimeout(() => setToast(""), 2600); }, []);
+  const chooseTheme = useCallback((preference: ThemePreference) => {
+    const resolved = resolveTheme(preference);
+    try { window.localStorage.setItem("rentwise-theme", preference); } catch { /* The visual choice still applies when storage is unavailable. */ }
+    setThemeState({ preference, resolved });
+    applyDocumentTheme(resolved, true);
+  }, []);
 
   const refresh = useCallback(async (activeUser = user) => {
     setLoading(true); setError("");
@@ -304,6 +336,23 @@ export default function RentwiseApp() {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") navigator.serviceWorker.register("/sw.js").catch(() => undefined);
   }, []);
 
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const syncTheme = () => {
+      let saved: string | null = null;
+      try { saved = window.localStorage.getItem("rentwise-theme"); } catch { /* Use the system preference when storage is unavailable. */ }
+      const preference: ThemePreference = saved === "light" || saved === "dark" || saved === "system" ? saved : "system";
+      const resolved = resolveTheme(preference);
+      // Theme preferences are device-local and synchronized with system appearance changes.
+      setThemeState({ preference, resolved });
+      applyDocumentTheme(resolved);
+    };
+    syncTheme();
+    media.addEventListener("change", syncTheme);
+    window.addEventListener("storage", syncTheme);
+    return () => { media.removeEventListener("change", syncTheme); window.removeEventListener("storage", syncTheme); };
+  }, []);
+
   const navigate = (next: Route) => { setRoute(next); setDetail(null); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const openForm = (kind: FormKind, target?: string | null) => { setFormTarget(target ?? null); setForm(kind); };
   const closeForm = () => { setForm(null); setFormTarget(null); };
@@ -314,7 +363,7 @@ export default function RentwiseApp() {
   const signOut = async () => { if (client) await client.auth.signOut(); setUser(null); setDemoSignedIn(false); setWorkspace(null); setRoute("home"); };
 
   if (!authReady || loading && !workspace) return <LoadingScreen />;
-  if (!user && !demoSignedIn) return <AuthScreen service={service} onDemo={() => setDemoSignedIn(true)} onAuthenticated={(signedInUser) => setUser(signedInUser)} />;
+  if (!user && !demoSignedIn) return <AuthScreen service={service} theme={themeState.resolved} onToggleTheme={() => chooseTheme(themeState.resolved === "dark" ? "light" : "dark")} onDemo={() => setDemoSignedIn(true)} onAuthenticated={(signedInUser) => setUser(signedInUser)} />;
   if (!workspace) return <main className="fatal-state"><CircleAlert size={30} /><h1>Workspace unavailable</h1><p>{error || "Please try again."}</p><button className="button button-primary" onClick={() => void refresh()}>Try again</button></main>;
 
   const pageProps = { workspace, service, refresh, notify, setDetail, openForm, setConfirm, navigate };
@@ -332,7 +381,7 @@ export default function RentwiseApp() {
       case "collections": page = <CollectionsPage {...pageProps} />; break;
       case "expenses": page = <ExpensesPage {...pageProps} />; break;
       case "reports": page = <ReportsPage {...pageProps} />; break;
-      case "settings": page = <SettingsPage {...pageProps} setLookupTarget={setLookupTarget} />; break;
+      case "settings": page = <SettingsPage {...pageProps} themePreference={themeState.preference} onThemePreferenceChange={chooseTheme} setLookupTarget={setLookupTarget} />; break;
       case "admin": page = <AdminPage {...pageProps} client={client} />; break;
       case "more": page = <MorePage workspace={workspace} navigate={navigate} signOut={signOut} />; break;
       default: page = <HomePage {...pageProps} />;
@@ -342,7 +391,7 @@ export default function RentwiseApp() {
   return <div className="app-shell">
     <Navigation route={route} onNavigate={navigate} />
     <div className="app-column">
-      <AppHeader workspace={workspace} route={route} onSettings={() => navigate("settings")} onAdmin={() => navigate("admin")} onSignOut={signOut} />
+      <AppHeader workspace={workspace} route={route} theme={themeState.resolved} onToggleTheme={() => chooseTheme(themeState.resolved === "dark" ? "light" : "dark")} onSettings={() => navigate("settings")} onAdmin={() => navigate("admin")} onSignOut={signOut} />
       {service.isDemo && <div className="demo-banner"><Info size={15} /><span>Sample workspace · changes reset when the page reloads</span></div>}
       {error && <div className="global-alert"><CircleAlert size={17} /><span>{error}</span><button type="button" onClick={() => setError("")}><X size={16} /></button></div>}
       <main className="app-main"><div className="page-transition" key={`${route}-${detail?.kind ?? "list"}-${detail?.id ?? ""}`}>{detail && <button className="back-button" type="button" onClick={() => setDetail(null)}><ChevronLeft size={18} />Back</button>}{page}{detail && <AttachmentList workspace={workspace} service={service} entityType={detail.kind} entityId={detail.id} onError={setError} />}</div></main>
@@ -666,7 +715,7 @@ function ReportExpenseTable({ workspace, expenses }: { workspace: WorkspaceData;
   return <section className="report-section"><h3>Expenses</h3><div className="report-table-wrap"><table className="report-table"><thead><tr><th>Expense</th><th>Date</th><th>Description</th><th>Category</th><th className="number">Amount</th></tr></thead><tbody>{expenses.map((expense) => <tr key={expense.id}><td>{expense.display_id}</td><td>{formatDate(expense.expense_date)}</td><td>{expense.description}</td><td>{workspace.expenseCategories.find((item) => item.id === expense.category_id)?.name ?? "Other"}</td><td className="number">{formatMoney(expense.amount, workspace.settings.currency_symbol)}</td></tr>)}{!expenses.length && <tr><td colSpan={5} className="empty-cell">No expenses in this period.</td></tr>}</tbody><tfoot><tr><th colSpan={4}>Total expenses</th><th className="number">{formatMoney(expenses.reduce((sum, expense) => sum + expense.amount, 0), workspace.settings.currency_symbol)}</th></tr></tfoot></table></div></section>;
 }
 
-function SettingsPage({ workspace, openForm, service, notify, refresh, setConfirm, setLookupTarget }: PageProps & { setLookupTarget: (table: "property_types" | "payment_methods" | "expense_categories") => void }) {
+function SettingsPage({ workspace, openForm, service, notify, refresh, setConfirm, themePreference, onThemePreferenceChange, setLookupTarget }: PageProps & { themePreference: ThemePreference; onThemePreferenceChange: (preference: ThemePreference) => void; setLookupTarget: (table: "property_types" | "payment_methods" | "expense_categories") => void }) {
   const downloadBackup = () => {
     const blob = new Blob([service.exportBackup(workspace)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -705,6 +754,11 @@ function SettingsPage({ workspace, openForm, service, notify, refresh, setConfir
   return <>
     <PageHeading eyebrow="Account preferences" title="Settings" subtitle="Manage your profile, receipts and reusable options." />
     <div className="settings-grid">
+      <section className="settings-section appearance-section"><SectionHeading title="Appearance" /><div className="appearance-card"><div className="appearance-copy"><IconTile icon={themePreference === "light" ? Sun : themePreference === "dark" ? Moon : Monitor} /><span><strong>Color theme</strong><small>Saved on this device</small></span></div><div className="theme-options" role="radiogroup" aria-label="Color theme">{([
+        ["light", "Light", Sun],
+        ["dark", "Dark", Moon],
+        ["system", "System", Monitor],
+      ] as Array<[ThemePreference, string, LucideIcon]>).map(([value, label, Icon]) => <button key={value} type="button" role="radio" aria-checked={themePreference === value} className={themePreference === value ? "is-active" : ""} onClick={() => onThemePreferenceChange(value)}><Icon size={16} /><span>{label}</span>{themePreference === value && <Check size={14} />}</button>)}</div></div></section>
       <section className="settings-section"><SectionHeading title="Profile" /><div className="menu-list">
         <button className="menu-row" type="button" onClick={() => openForm("profile")}><IconTile icon={UserRound} /><span><strong>Personal information</strong><small>{workspace.profile.full_name} · {workspace.profile.email}</small></span><ChevronRight size={17} /></button>
         <button className="menu-row" type="button" onClick={() => openForm("password")}><IconTile icon={KeyRound} /><span><strong>Change password</strong><small>Update the password used to sign in</small></span><ChevronRight size={17} /></button>

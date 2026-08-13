@@ -33,15 +33,23 @@ test("health endpoint reports a ready service", async () => {
   assert.match(body.timestamp, /^\d{4}-\d{2}-\d{2}T/);
 });
 
-test("mobile design keeps restrained geometry, fixed navigation and reduced motion", async () => {
-  const [css, manifest] = await Promise.all([
+test("mobile design keeps restrained geometry, fixed navigation, themes and reduced motion", async () => {
+  const [css, manifest, app, layout] = await Promise.all([
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../app/manifest.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/rentwise-app.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(css, /--radius-lg:\s*12px/);
   assert.match(css, /font-family:\s*var\(--font-geist\)/);
   assert.match(css, /\.bottom-nav\s*\{[^}]*position:\s*fixed/s);
+  assert.match(css, /:root\[data-theme="dark"\]/);
+  assert.match(css, /\.theme-options/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(app, /rentwise-theme/);
+  assert.match(app, /"light", "Light", Sun/);
+  assert.match(app, /"system", "System", Monitor/);
+  assert.match(layout, /themeBootScript/);
   assert.match(manifest, /display:\s*"standalone"/);
   assert.match(manifest, /purpose:\s*"maskable"/);
 });

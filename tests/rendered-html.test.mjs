@@ -119,3 +119,21 @@ test("rent billing upgrade preserves monthly obligations and allocates multi-bil
   assert.match(app, /\["Rento", "Rentwise"\]/);
   assert.doesNotMatch(sql, /'INV-'/);
 });
+
+test("private profile pictures support landlords and tenants", async () => {
+  const [app, service, types, migration] = await Promise.all([
+    readFile(new URL("../app/rentwise-app.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/data-service.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/types.ts", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/202608140002_profile_images.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(types, /avatar_path:\s*string \| null/);
+  assert.match(types, /profile_image_path:\s*string \| null/);
+  assert.match(app, /function ProfilePhotoPicker/);
+  assert.match(app, /name="profilePhoto"/);
+  assert.match(app, /ProfileAvatar name=\{tenant\.name\}/);
+  assert.match(service, /replaceProfileImage/);
+  assert.match(service, /getProfileImageUrl/);
+  assert.match(service, /image\\\/\(jpeg\|png\|webp\)/);
+  assert.match(migration, /add column if not exists avatar_path text/);
+});

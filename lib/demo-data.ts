@@ -10,6 +10,7 @@ export const demoWorkspace: WorkspaceData = {
     full_name: "Arif Hossain",
     phone: "+880 1712 000 111",
     address: "Dhanmondi, Dhaka",
+    avatar_path: null,
     is_admin: false,
     is_active: true,
     force_password_change: false,

@@ -50,6 +50,7 @@ function nextDisplayId(prefix: string, records: { display_id: string }[], width:
 
 export class RentwiseDataService {
   private demo: WorkspaceData | null;
+  private readonly imageUrlCache = new Map<string, { url: string; expiresAt: number }>();
 
   constructor(private readonly client: SupabaseClient | null) {
     this.demo = client ? null : cloneDemoWorkspace();
@@ -355,6 +356,65 @@ export class RentwiseDataService {
     Object.assign(this.requireDemo().profile, values);
   }
 
+  async replaceProfileImage(userId: string, target: "profile" | "tenant", targetId: string, file: File, previousPath: string | null) {
+    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) throw new Error("Choose a JPG, PNG or WebP image.");
+    if (file.size > 10 * 1024 * 1024) throw new Error("Profile pictures must be 10 MB or smaller.");
+    if (!this.client) {
+      if (previousPath?.startsWith("blob:")) URL.revokeObjectURL(previousPath);
+      const path = URL.createObjectURL(file);
+      if (target === "profile") this.requireDemo().profile.avatar_path = path;
+      else {
+        const tenant = this.requireDemo().tenants.find((item) => item.id === targetId);
+        if (tenant) tenant.profile_image_path = path;
+      }
+      return path;
+    }
+    const safeExtension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const path = `${userId}/profile-images/${target}/${targetId}/${crypto.randomUUID()}.${safeExtension}`;
+    const upload = await this.client.storage.from("rentwise-private").upload(path, file, { contentType: file.type, upsert: false });
+    if (upload.error) throw upload.error;
+    const table = target === "profile" ? "profiles" : "tenants";
+    const values = target === "profile" ? { avatar_path: path } : { profile_image_path: path };
+    const update = await this.client.from(table).update(values).eq("id", targetId);
+    if (update.error) {
+      await this.client.storage.from("rentwise-private").remove([path]);
+      throw update.error;
+    }
+    this.imageUrlCache.delete(previousPath ?? "");
+    if (previousPath) await this.client.storage.from("rentwise-private").remove([previousPath]);
+    return path;
+  }
+
+  async removeProfileImage(target: "profile" | "tenant", targetId: string, previousPath: string | null) {
+    if (!previousPath) return;
+    if (!this.client) {
+      if (previousPath.startsWith("blob:")) URL.revokeObjectURL(previousPath);
+      if (target === "profile") this.requireDemo().profile.avatar_path = null;
+      else {
+        const tenant = this.requireDemo().tenants.find((item) => item.id === targetId);
+        if (tenant) tenant.profile_image_path = null;
+      }
+      return;
+    }
+    const table = target === "profile" ? "profiles" : "tenants";
+    const values = target === "profile" ? { avatar_path: null } : { profile_image_path: null };
+    const update = await this.client.from(table).update(values).eq("id", targetId);
+    if (update.error) throw update.error;
+    this.imageUrlCache.delete(previousPath);
+    await this.client.storage.from("rentwise-private").remove([previousPath]);
+  }
+
+  async getProfileImageUrl(storagePath: string) {
+    if (storagePath.startsWith("blob:")) return storagePath;
+    if (!this.client) return null;
+    const cached = this.imageUrlCache.get(storagePath);
+    if (cached && cached.expiresAt > Date.now()) return cached.url;
+    const { data, error } = await this.client.storage.from("rentwise-private").createSignedUrl(storagePath, 3600);
+    if (error) throw error;
+    this.imageUrlCache.set(storagePath, { url: data.signedUrl, expiresAt: Date.now() + 55 * 60 * 1000 });
+    return data.signedUrl;
+  }
+
   async updateSettings(userId: string, values: Partial<UserSettings>) {
     if (this.client) {
       const { error } = await this.client.from("user_settings").update(values).eq("user_id", userId);
@@ -391,8 +451,8 @@ export class RentwiseDataService {
     if (!this.client) {
       return [
         { ...this.requireDemo().profile, id: "demo-landlord", record_count: 13 },
-        { id: "demo-user-2", email: "samira@example.com", full_name: "Samira Khan", phone: "", address: "", is_admin: false, is_active: true, force_password_change: false, created_at: "2026-02-28T08:00:00Z", record_count: 19 },
-        { id: "demo-user-3", email: "imran@example.com", full_name: "Imran Chowdhury", phone: "", address: "", is_admin: false, is_active: false, force_password_change: false, created_at: "2026-04-03T08:00:00Z", record_count: 8 },
+        { id: "demo-user-2", email: "samira@example.com", full_name: "Samira Khan", phone: "", address: "", avatar_path: null, is_admin: false, is_active: true, force_password_change: false, created_at: "2026-02-28T08:00:00Z", record_count: 19 },
+        { id: "demo-user-3", email: "imran@example.com", full_name: "Imran Chowdhury", phone: "", address: "", avatar_path: null, is_admin: false, is_active: false, force_password_change: false, created_at: "2026-04-03T08:00:00Z", record_count: 8 },
       ];
     }
     const { data, error } = await this.client.from("profiles").select("*").order("created_at", { ascending: false });

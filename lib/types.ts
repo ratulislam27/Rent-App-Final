@@ -9,6 +9,7 @@ export interface Profile {
   full_name: string;
   phone: string;
   address: string;
+  avatar_path: string | null;
   is_admin: boolean;
   is_active: boolean;
   force_password_change: boolean;

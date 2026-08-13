@@ -43,6 +43,9 @@ test("mobile design keeps restrained geometry, fixed navigation, themes and redu
   assert.match(css, /--radius-lg:\s*12px/);
   assert.match(css, /font-family:\s*var\(--font-geist\)/);
   assert.match(css, /\.bottom-nav\s*\{[^}]*position:\s*fixed/s);
+  assert.match(css, /--bottom-safe-space:\s*max\(env\(safe-area-inset-bottom\),\s*12px\)/);
+  assert.match(css, /\.charge-row\s*\{[^}]*44px/s);
+  assert.match(css, /\.detail-footer \.button\s*\{[^}]*min-width:\s*156px/s);
   assert.match(css, /:root\[data-theme="dark"\]/);
   assert.match(css, /\.theme-options/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
@@ -51,6 +54,10 @@ test("mobile design keeps restrained geometry, fixed navigation, themes and redu
   assert.doesNotMatch(app, /<div className="mobile-brand"><span className="brand-mark"/);
   assert.match(app, /"light", "Light", Sun/);
   assert.match(app, /"system", "System", Monitor/);
+  assert.match(app, /metric-occupied/);
+  assert.match(app, /metric-vacant/);
+  assert.match(app, /metric-expenses/);
+  assert.match(app, /Remove property allocation/);
   assert.match(layout, /themeBootScript/);
   assert.match(manifest, /display:\s*"standalone"/);
   assert.match(manifest, /icon-512-v2\.png/);

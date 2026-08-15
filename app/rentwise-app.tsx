@@ -1142,13 +1142,15 @@ function RentBillChargeForm({ workspace, service, billId, chargeId, onClose, mut
   if (!bill) return null;
   const otherCharges = workspace.rentCharges.filter((item) => item.rent_period_id === bill.id && item.id !== charge?.id).reduce((sum, item) => sum + item.amount, 0);
   const minimumAmount = Math.max(0.01, Math.ceil((rentBillPaid(workspace, bill) - bill.base_rent - otherCharges) * 100) / 100);
+  const targetBillId = bill.id;
+  const targetBillDisplayId = bill.display_id;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form = new FormData(event.currentTarget);
     const reason = String(form.get("reason") || "").trim();
     const amount = safeNumber(form.get("amount"));
     await mutate(
-      () => charge ? service.updateRentBillCharge(charge.id, reason, amount) : service.addRentBillCharge(workspace.profile.id, bill.id, reason, amount),
-      charge ? `Charge updated on ${bill.display_id}` : `Charge added to ${bill.display_id}`,
+      () => charge ? service.updateRentBillCharge(charge.id, reason, amount) : service.addRentBillCharge(workspace.profile.id, targetBillId, reason, amount),
+      charge ? `Charge updated on ${targetBillDisplayId}` : `Charge added to ${targetBillDisplayId}`,
     );
   }
   const amountHint = charge && minimumAmount > 0.01 ? `At least ${formatMoney(minimumAmount, workspace.settings.currency_symbol)} is required because payments are already applied to this bill.` : undefined;

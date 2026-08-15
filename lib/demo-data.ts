@@ -22,10 +22,10 @@ export const demoWorkspace: WorkspaceData = {
     currency_symbol: "৳",
     timezone: "Asia/Dhaka",
     date_format: "DD MMM YYYY",
-    receipt_name: "Arif Hossain",
     receipt_phone: "+880 1712 000 111",
     receipt_address: "Dhanmondi, Dhaka",
     receipt_logo_path: null,
+    signature_path: null,
   },
   propertyTypes: ["Flat", "Shop", "Office", "Plot"].map((name, index) => ({
     id: `10000000-0000-4000-8000-00000000000${index + 1}`,
@@ -200,9 +200,9 @@ export const demoWorkspace: WorkspaceData = {
   receipts: [
     { id: "80000000-0000-4000-8000-000000000001", user_id: userId, display_id: "RCV000039", agreement_id: "60000000-0000-4000-8000-000000000001", rent_period_id: "70000000-0000-4000-8000-000000000001", collection_date: "2026-07-04", amount: 28000, unallocated_amount: 0, payment_method_id: "20000000-0000-4000-8000-000000000002", collected_by: "Arif Hossain", notes: "", status: "valid", void_reason: null, voided_at: null, created_at: now, updated_at: now },
     { id: "80000000-0000-4000-8000-000000000002", user_id: userId, display_id: "RCV000040", agreement_id: "60000000-0000-4000-8000-000000000002", rent_period_id: "70000000-0000-4000-8000-000000000003", collection_date: "2026-07-10", amount: 45000, unallocated_amount: 0, payment_method_id: "20000000-0000-4000-8000-000000000001", collected_by: "Arif Hossain", notes: "", status: "valid", void_reason: null, voided_at: null, created_at: now, updated_at: now },
-    { id: "80000000-0000-4000-8000-000000000003", user_id: userId, display_id: "RCV000041", agreement_id: "60000000-0000-4000-8000-000000000001", rent_period_id: "70000000-0000-4000-8000-000000000002", collection_date: "2026-08-02", amount: 8000, unallocated_amount: 0, payment_method_id: "20000000-0000-4000-8000-000000000001", collected_by: "Arif Hossain", notes: "First installment", status: "valid", void_reason: null, voided_at: null, created_at: "2026-08-02T08:00:00.000Z", updated_at: "2026-08-02T08:00:00.000Z" },
-    { id: "80000000-0000-4000-8000-000000000004", user_id: userId, display_id: "RCV000042", agreement_id: "60000000-0000-4000-8000-000000000001", rent_period_id: "70000000-0000-4000-8000-000000000002", collection_date: "2026-08-04", amount: 10000, unallocated_amount: 0, payment_method_id: "20000000-0000-4000-8000-000000000003", collected_by: "Arif Hossain", notes: "Second installment", status: "valid", void_reason: null, voided_at: null, created_at: "2026-08-04T08:00:00.000Z", updated_at: "2026-08-04T08:00:00.000Z" },
-    { id: "80000000-0000-4000-8000-000000000005", user_id: userId, display_id: "RCV000043", agreement_id: "60000000-0000-4000-8000-000000000001", rent_period_id: "70000000-0000-4000-8000-000000000002", collection_date: "2026-08-05", amount: 10000, unallocated_amount: 0, payment_method_id: "20000000-0000-4000-8000-000000000002", collected_by: "Arif Hossain", notes: "Final installment", status: "valid", void_reason: null, voided_at: null, created_at: "2026-08-05T08:00:00.000Z", updated_at: "2026-08-05T08:00:00.000Z" },
+    { id: "80000000-0000-4000-8000-000000000003", user_id: userId, display_id: "RCV000041", agreement_id: "60000000-0000-4000-8000-000000000001", rent_period_id: "70000000-0000-4000-8000-000000000002", collection_date: "2026-08-02", amount: 8000, unallocated_amount: 0, payment_method_id: "20000000-0000-4000-8000-000000000001", collected_by: "Arif Hossain", notes: "First payment", status: "valid", void_reason: null, voided_at: null, created_at: "2026-08-02T08:00:00.000Z", updated_at: "2026-08-02T08:00:00.000Z" },
+    { id: "80000000-0000-4000-8000-000000000004", user_id: userId, display_id: "RCV000042", agreement_id: "60000000-0000-4000-8000-000000000001", rent_period_id: "70000000-0000-4000-8000-000000000002", collection_date: "2026-08-04", amount: 10000, unallocated_amount: 0, payment_method_id: "20000000-0000-4000-8000-000000000003", collected_by: "Arif Hossain", notes: "Second payment", status: "valid", void_reason: null, voided_at: null, created_at: "2026-08-04T08:00:00.000Z", updated_at: "2026-08-04T08:00:00.000Z" },
+    { id: "80000000-0000-4000-8000-000000000005", user_id: userId, display_id: "RCV000043", agreement_id: "60000000-0000-4000-8000-000000000001", rent_period_id: "70000000-0000-4000-8000-000000000002", collection_date: "2026-08-05", amount: 10000, unallocated_amount: 0, payment_method_id: "20000000-0000-4000-8000-000000000002", collected_by: "Arif Hossain", notes: "Final payment", status: "valid", void_reason: null, voided_at: null, created_at: "2026-08-05T08:00:00.000Z", updated_at: "2026-08-05T08:00:00.000Z" },
   ],
   paymentAllocations: [
     { id: "81000000-0000-4000-8000-000000000001", user_id: userId, receipt_id: "80000000-0000-4000-8000-000000000001", rent_period_id: "70000000-0000-4000-8000-000000000001", allocated_amount: 28000, created_at: now },

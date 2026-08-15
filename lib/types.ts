@@ -22,10 +22,10 @@ export interface UserSettings {
   currency_symbol: string;
   timezone: string;
   date_format: string;
-  receipt_name: string;
   receipt_phone: string;
   receipt_address: string;
   receipt_logo_path?: string | null;
+  signature_path: string | null;
 }
 
 export interface LookupOption {

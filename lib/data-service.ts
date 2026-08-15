@@ -415,6 +415,42 @@ export class RentwiseDataService {
     return data.signedUrl;
   }
 
+  async replaceDocumentSignature(userId: string, file: File, previousPath: string | null) {
+    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) throw new Error("Choose a JPG, PNG or WebP signature image.");
+    if (file.size > 5 * 1024 * 1024) throw new Error("Signature images must be 5 MB or smaller.");
+    if (!this.client) {
+      if (previousPath?.startsWith("blob:")) URL.revokeObjectURL(previousPath);
+      const path = URL.createObjectURL(file);
+      this.requireDemo().settings.signature_path = path;
+      return path;
+    }
+    const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const path = `${userId}/document-signatures/${crypto.randomUUID()}.${extension}`;
+    const upload = await this.client.storage.from("rentwise-private").upload(path, file, { contentType: file.type, upsert: false });
+    if (upload.error) throw upload.error;
+    const update = await this.client.from("user_settings").update({ signature_path: path }).eq("user_id", userId);
+    if (update.error) {
+      await this.client.storage.from("rentwise-private").remove([path]);
+      throw update.error;
+    }
+    this.imageUrlCache.delete(previousPath ?? "");
+    if (previousPath) await this.client.storage.from("rentwise-private").remove([previousPath]);
+    return path;
+  }
+
+  async removeDocumentSignature(userId: string, previousPath: string | null) {
+    if (!previousPath) return;
+    if (!this.client) {
+      if (previousPath.startsWith("blob:")) URL.revokeObjectURL(previousPath);
+      this.requireDemo().settings.signature_path = null;
+      return;
+    }
+    const update = await this.client.from("user_settings").update({ signature_path: null }).eq("user_id", userId);
+    if (update.error) throw update.error;
+    this.imageUrlCache.delete(previousPath);
+    await this.client.storage.from("rentwise-private").remove([previousPath]);
+  }
+
   async updateSettings(userId: string, values: Partial<UserSettings>) {
     if (this.client) {
       const { error } = await this.client.from("user_settings").update(values).eq("user_id", userId);

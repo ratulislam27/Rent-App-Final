@@ -213,6 +213,38 @@ function ProfilePhotoPicker({ name, personName, currentPath, service }: { name: 
   </div>;
 }
 
+function SignaturePicker({ currentPath, service }: { currentPath: string | null; service: RentwiseDataService }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const storedUrl = useProfileImageUrl(service, currentPath);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [removed, setRemoved] = useState(false);
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
+  const clearPreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+  const imageUrl = previewUrl || (!removed ? storedUrl : null);
+  return <div className="signature-picker">
+    <div className="signature-preview">{imageUrl ? <img src={imageUrl} alt="Landlord signature preview" /> : <span>Your signature preview</span>}</div>
+    <div className="signature-picker-copy"><strong>Landlord signature</strong><small>Use a tightly cropped PNG with a transparent or white background for the cleanest print.</small><div>
+      <label className="button button-secondary profile-photo-picker"><Upload size={16} />{imageUrl ? "Replace signature" : "Upload signature"}<input ref={inputRef} name="signature" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; if (previewUrl) URL.revokeObjectURL(previewUrl); setRemoved(false); setPreviewUrl(URL.createObjectURL(file)); }} /></label>
+      {imageUrl && <button className="text-button button-danger-text" type="button" onClick={() => { clearPreview(); setRemoved(true); }}>Remove</button>}
+    </div></div>
+    <input type="hidden" name="signatureRemove" value={removed ? "true" : "false"} />
+  </div>;
+}
+
+function DocumentHeader({ title, id, date, status, balance, symbol }: { title: string; id: string; date: string; status: "paid" | "due" | "void"; balance?: number; symbol: string }) {
+  const label = status === "void" ? "VOID" : status === "paid" ? "PAID" : "BALANCE DUE";
+  return <header className="document-header"><div className="document-identity"><span>Tenant document</span><strong>{title}</strong><small>{id} · {formatDate(date)}</small></div><div className={cn("document-status", `is-${status}`)}><strong>{label}</strong>{status === "due" && balance !== undefined && <span>{formatMoney(balance, symbol)}</span>}</div></header>;
+}
+
+function DocumentSignatures({ workspace, service }: { workspace: WorkspaceData; service: RentwiseDataService }) {
+  const signatureUrl = useProfileImageUrl(service, workspace.settings.signature_path);
+  return <section className="document-signatures" aria-label="Document signatures"><div className="document-signature"><div className="signature-mark">{signatureUrl && <img src={signatureUrl} alt="Landlord signature" />}</div><strong>Landlord signature</strong><span>Authorized receipt</span></div><div className="document-signature"><div className="signature-mark" /><strong>Tenant signature</strong><span>Optional acknowledgement</span></div></section>;
+}
+
 function AttachmentList({ workspace, service, entityType, entityId, onError }: { workspace: WorkspaceData; service: RentwiseDataService; entityType: "tenant" | "property" | "agreement" | "receipt" | "expense"; entityId: string; onError: (message: string) => void }) {
   const files = workspace.attachments.filter((item) => item.entity_type === entityType && item.entity_id === entityId);
   if (!files.length) return null;
@@ -361,7 +393,7 @@ function AppHeader({ workspace, service, route, theme, onBack, onToggleTheme, on
     };
   }, [menuOpen]);
 
-  return <header className="app-header"><div className="header-page-context">{onBack ? <button className="header-back-button" type="button" onClick={onBack} aria-label={`Back to ${titleMap[route]}`}><ChevronLeft size={20} /><span>{titleMap[route]}</span></button> : titleMap[route]}</div><div className="header-controls"><AppearanceToggle theme={theme} onToggle={onToggleTheme} /><div className="account-menu-wrap" ref={menuRef}><button className="account-button" type="button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-haspopup="menu"><ProfileAvatar name={workspace.profile.full_name} path={workspace.profile.avatar_path} service={service} /><span className="account-copy"><strong>{workspace.profile.full_name}</strong><small>{workspace.profile.email}</small></span></button>{menuOpen && <div className="account-popover" role="menu"><button role="menuitem" type="button" onClick={() => { setMenuOpen(false); onSettings(); }}><Settings size={17} />Settings</button>{workspace.profile.is_admin && <button role="menuitem" type="button" onClick={() => { setMenuOpen(false); onAdmin(); }}><ShieldCheck size={17} />Administrator</button>}<button role="menuitem" type="button" onClick={onSignOut}><LogOut size={17} />Sign out</button></div>}</div></div></header>;
+  return <header className="app-header"><div className="header-page-context">{onBack ? <button className="header-back-button" type="button" onClick={onBack} aria-label={`Back to ${titleMap[route]}`}><ChevronLeft size={19} /><span>Back</span></button> : titleMap[route]}</div><div className="header-controls"><AppearanceToggle theme={theme} onToggle={onToggleTheme} /><div className="account-menu-wrap" ref={menuRef}><button className="account-button" type="button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-haspopup="menu"><ProfileAvatar name={workspace.profile.full_name} path={workspace.profile.avatar_path} service={service} /><span className="account-copy"><strong>{workspace.profile.full_name}</strong><small>{workspace.profile.email}</small></span></button>{menuOpen && <div className="account-popover" role="menu"><button role="menuitem" type="button" onClick={() => { setMenuOpen(false); onSettings(); }}><Settings size={17} />Settings</button>{workspace.profile.is_admin && <button role="menuitem" type="button" onClick={() => { setMenuOpen(false); onAdmin(); }}><ShieldCheck size={17} />Administrator</button>}<button role="menuitem" type="button" onClick={onSignOut}><LogOut size={17} />Sign out</button></div>}</div></div></header>;
 }
 
 export default function RentwiseApp() {

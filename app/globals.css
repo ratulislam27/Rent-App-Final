@@ -426,12 +426,12 @@ button.void-row:hover { background: var(--red-soft); }
 .receipt-paper { max-width: 760px; padding: clamp(20px, 5vw, 42px); }
 .document-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 20px; border-bottom: 2px solid var(--text); }
 .document-identity { min-width: 0; }
-.document-title-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 12px; font-size: clamp(22px, 4vw, 30px); line-height: 1.08; letter-spacing: -.045em; }
+.document-title-line { font-size: clamp(22px, 4vw, 30px); line-height: 1.08; letter-spacing: -.045em; }
 .document-title-line > strong { font-size: inherit; font-weight: 720; }
-.document-title-line > span { color: var(--text-faint); font-size: inherit; font-weight: 420; }
-.document-status { flex: 0 0 auto; min-width: 142px; padding-top: 1px; text-align: right; }
+.document-number { display: block; margin-top: 8px; color: var(--text-faint); font-size: 11px; font-weight: 450; letter-spacing: .01em; }
+.document-status { flex: 0 0 auto; min-width: 142px; text-align: right; }
 .document-status > strong, .document-status > span { display: block; }
-.document-status > strong { font-size: clamp(22px, 5vw, 32px); font-weight: 720; line-height: 1.08; letter-spacing: -.045em; }
+.document-status > strong { font-size: clamp(22px, 4vw, 30px); font-weight: 720; line-height: 1.08; letter-spacing: -.045em; }
 .document-status > span { margin-top: 8px; color: var(--text-soft); font-size: 10px; line-height: 1.2; }
 .document-status.is-paid { color: var(--green); }
 .document-status.is-due { color: var(--red); }
@@ -682,6 +682,7 @@ button.void-row:hover { background: var(--red-soft); }
   .receipt-paper { width: 100%; page-break-inside: avoid; break-inside: avoid-page; }
   .document-header { padding-bottom: 12px; }
   .document-title-line, .document-status > strong { font-size: 23px; }
+  .document-number { margin-top: 5px; font-size: 9px; }
   .document-status { min-width: 126px; padding-top: 0; }
   .document-status > span { margin-top: 4px; font-size: 8px; }
   .receipt-party { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 11px 0; }

@@ -256,7 +256,7 @@ function SignaturePicker({ currentPath, service }: { currentPath: string | null;
 function DocumentHeader({ title, id, status, balance, symbol }: { title: string; id: string; status: "paid" | "due" | "void"; balance?: number; symbol: string }) {
   const label = status === "void" ? "Void" : status === "paid" ? "Paid" : "Due";
   const detail = status === "void" ? "Document voided" : status === "due" && balance !== undefined ? `${formatMoney(balance, symbol)} outstanding` : status === "due" ? "Payment outstanding" : null;
-  return <header className="document-header"><div className="document-identity"><div className="document-title-line"><strong>{title}</strong><span>{id}</span></div></div><div className={cn("document-status", `is-${status}`)}><strong>{label}</strong>{detail && <span>{detail}</span>}</div></header>;
+  return <header className="document-header"><div className="document-identity"><div className="document-title-line"><strong>{title}</strong></div><span className="document-number">#{id}</span></div><div className={cn("document-status", `is-${status}`)}><strong>{label}</strong>{detail && <span>{detail}</span>}</div></header>;
 }
 
 function DocumentSignatures({ workspace, service }: { workspace: WorkspaceData; service: RentwiseDataService }) {

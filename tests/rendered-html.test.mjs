@@ -101,10 +101,11 @@ test("database migration enforces isolated IDs and atomic financial writes", asy
 });
 
 test("rent billing upgrade preserves monthly obligations and allocates multi-bill payments", async () => {
-  const [sql, guardSql, billNumberSql, app, service] = await Promise.all([
+  const [sql, guardSql, billNumberSql, chargeEditSql, app, service] = await Promise.all([
     readFile(new URL("../supabase/migrations/202608140001_rent_billing.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/202608150001_rent_invoice_payment_guard.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/202608150003_rent_bill_numbers.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/202608150004_edit_rent_bill_charges.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/rentwise-app.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/data-service.ts", import.meta.url), "utf8"),
   ]);
@@ -123,16 +124,20 @@ test("rent billing upgrade preserves monthly obligations and allocates multi-bil
   assert.match(app, /Remaining as tenant credit/);
   assert.match(app, /Payment activity for this bill/);
   assert.match(app, /Payment history/);
+  assert.match(app, /No payments are recorded for this bill/);
   assert.match(app, /Amount left/);
   assert.match(app, /still due/);
   assert.match(app, /Amount due/);
   assert.match(app, /Not counted/);
+  assert.match(app, /Edit bill charge/);
+  assert.match(app, /Edit .* charge/);
   assert.match(service, /rentBillRemaining/);
   assert.match(service, /rentBillPaymentHistory/);
   assert.match(service, /balanceAfter/);
   assert.match(service, /receiptAllocations/);
   assert.match(service, /replace\(\/\^INV/);
   assert.match(service, /product:\s*"Rento"/);
+  assert.match(service, /updateRentBillCharge/);
   assert.match(app, /\["Rento", "Rentwise"\]/);
   assert.doesNotMatch(sql, /'INV'/);
   assert.match(guardSql, /enforce_rent_invoice_payment_balance/);
@@ -141,6 +146,9 @@ test("rent billing upgrade preserves monthly obligations and allocates multi-bil
   assert.match(billNumberSql, /INV000001 becomes BIL000001/);
   assert.match(billNumberSql, /normalize_rent_bill_display_id/);
   assert.match(billNumberSql, /'rent_bill', 'BIL', 6/);
+  assert.match(chargeEditSql, /update_rent_bill_charge/);
+  assert.match(chargeEditSql, /revised bill total cannot be less than the payments already applied/i);
+  assert.match(chargeEditSql, /rent_charges_protect_change/);
 });
 
 test("private profile pictures support landlords and tenants", async () => {
@@ -174,6 +182,7 @@ test("tenant documents show payment status, signatures and compact A4 print layo
   assert.match(app, /Amount due/);
   assert.match(app, /function DocumentSignatures/);
   assert.match(app, /Tenant signature/);
+  assert.match(app, /<span>Receipt<\/span><span>Method<\/span>/);
   assert.match(app, /function SignaturePicker/);
   assert.match(app, /Document settings/);
   assert.match(app, /maximum 10 MB/);
@@ -188,6 +197,8 @@ test("tenant documents show payment status, signatures and compact A4 print layo
   assert.match(service, /Signature upload failed/);
   assert.match(migration, /add column if not exists signature_path text/);
   assert.match(css, /@page\s*\{\s*size:\s*A4 portrait/);
-  assert.match(css, /break-inside:\s*avoid-page/);
+  assert.match(css, /\.receipt-paper\s*\{\s*break-inside:\s*auto/);
+  assert.match(css, /\.document-header, \.receipt-party, \.invoice-balance-summary, \.document-signatures, \.receipt-footer\s*\{\s*break-inside:\s*avoid/);
+  assert.match(css, /overflow:\s*visible !important/);
   assert.match(css, /\.document-extra-dense/);
 });

@@ -339,6 +339,31 @@ export class RentwiseDataService {
     this.requireDemo().rentCharges.push({ id: temporaryId("charge"), user_id: userId, rent_period_id: rentPeriodId, reason: normalizedReason, amount, created_at: new Date().toISOString() });
   }
 
+  async updateRentBillCharge(id: string, reason: string, amount: number) {
+    const normalizedReason = formatTitleCase(reason);
+    if (this.client) {
+      const { error } = await this.client.rpc("update_rent_bill_charge", {
+        p_charge_id: id,
+        p_reason: normalizedReason,
+        p_amount: amount,
+      });
+      if (error) throw error;
+      return;
+    }
+    const workspace = this.requireDemo();
+    const charge = workspace.rentCharges.find((item) => item.id === id);
+    if (!charge) throw new Error("Bill charge not found.");
+    const bill = workspace.rentPeriods.find((item) => item.id === charge.rent_period_id && !item.voided_at);
+    if (!bill) throw new Error("This bill can no longer be changed.");
+    const otherCharges = workspace.rentCharges
+      .filter((item) => item.rent_period_id === bill.id && item.id !== charge.id)
+      .reduce((sum, item) => sum + item.amount, 0);
+    if (bill.base_rent + otherCharges + amount + 0.01 < rentBillPaid(workspace, bill)) {
+      throw new Error("The revised bill total cannot be less than the payments already applied.");
+    }
+    Object.assign(charge, { reason: normalizedReason, amount });
+  }
+
   async voidReceipt(id: string, reason: string) {
     if (this.client) {
       const { error } = await this.client.rpc("void_rent_receipt", { p_receipt_id: id, p_reason: reason });

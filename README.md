@@ -38,7 +38,7 @@ npm test
 
 1. Create a Supabase project.
 2. In Authentication settings, keep email/password enabled and disable **Confirm email** for this version.
-3. Run `supabase/migrations/202608130001_initial_schema.sql` in the SQL editor.
+3. Run every file in `supabase/migrations` in timestamp order in the SQL editor. For an existing project, run only the files that have not been applied yet.
 4. Copy `.env.example` to `.env.local` and set:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
@@ -76,5 +76,7 @@ Unused properties and tenants may be permanently deleted. Once connected to an a
 ## Deployment
 
 Set the same three environment variables in Vercel, import the GitHub repository, and deploy. The default `npm run build` command produces the Vercel-ready Next.js build. `npm run build:sites` remains available for the previous Cloudflare Sites target. The app exposes `/api/health` for deployment checks.
+
+Vercel deploys the application only; it does not execute Supabase migrations. Apply any new files in `supabase/migrations` to the connected Supabase project before or alongside each application deployment.
 
 After deployment, verify signup, login, admin password reset, one rent receipt, one multi-property expense, private attachment access, report printing and Add to Home Screen on both iOS and Android.

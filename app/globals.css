@@ -513,10 +513,12 @@ button.void-row:hover { background: var(--red-soft); }
 .document-note { margin-top: 14px; border-left: 3px solid var(--line-strong); padding: 2px 0 2px 11px; }
 .document-note span { color: var(--text-soft); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
 .document-note p { margin-top: 4px; font-size: 10px; line-height: 1.45; }
-.document-signatures { display: grid; grid-template-columns: repeat(2, minmax(0, 170px)); justify-content: center; gap: clamp(140px, 24vw, 210px); max-width: 550px; margin: 34px auto 0; }
+.document-signatures { display: grid; grid-template-columns: repeat(2, minmax(0, 145px)); justify-content: space-between; gap: 32px; width: 100%; margin: 34px 0 0; }
 .document-signature { width: 100%; min-width: 0; text-align: center; }
-.signature-mark { display: flex; align-items: flex-end; justify-content: center; height: 48px; border-bottom: 1px solid var(--text); }
-.signature-mark img { display: block; width: 100%; max-width: 138px; height: 43px; object-fit: contain; }
+.document-signature:first-child { justify-self: start; }
+.document-signature:last-child { justify-self: end; }
+.signature-mark { display: flex; align-items: flex-end; justify-content: center; height: 40px; border-bottom: 1px solid var(--text); }
+.signature-mark img { display: block; width: 100%; max-width: 112px; height: 35px; object-fit: contain; }
 .document-signature > strong, .document-signature > span { display: block; }
 .document-signature > strong { margin-top: 7px; font-size: 10px; }
 .document-signature > span { margin-top: 2px; color: var(--text-soft); font-size: 8px; }
@@ -657,7 +659,7 @@ button.void-row:hover { background: var(--red-soft); }
   .document-status { min-width: 134px; }
   .receipt-party { grid-template-columns: 1fr; gap: 14px; }
   .receipt-balance-summary strong { font-size: 17px; }
-  .document-signatures { grid-template-columns: repeat(2, minmax(0, 150px)); gap: 36px; }
+  .document-signatures { grid-template-columns: repeat(2, minmax(0, 135px)); justify-content: space-between; gap: 24px; }
 }
 
 @media (max-width: 390px) {
@@ -721,9 +723,9 @@ button.void-row:hover { background: var(--red-soft); }
   .receipt-balance-summary > div { padding: 11px 12px; }
   .receipt-balance-summary strong { margin-top: 4px; font-size: 16px; }
   .document-note { margin-top: 13px; }
-  .document-signatures { grid-template-columns: repeat(2, minmax(0, 160px)); gap: 200px; max-width: 520px; margin-top: 34px; }
-  .signature-mark { height: 43px; }
-  .signature-mark img { max-width: 124px; height: 38px; }
+  .document-signatures { grid-template-columns: repeat(2, minmax(0, 140px)); justify-content: space-between; gap: 32px; width: 100%; max-width: none; margin: 34px 0 0; }
+  .signature-mark { height: 37px; }
+  .signature-mark img { max-width: 104px; height: 32px; }
   .document-signature > strong { margin-top: 6px; font-size: 9px; }
   .document-signature > span { margin-top: 3px; font-size: 8px; }
   .receipt-footer { margin-top: 16px; padding-top: 9px; font-size: 9px; }

@@ -347,7 +347,20 @@ export class RentwiseDataService {
         p_reason: normalizedReason,
         p_amount: amount,
       });
-      if (error) throw error;
+      if (error) {
+        const rpcMissing = error.code === "PGRST202" || /could not find.*update_rent_bill_charge/i.test(error.message);
+        if (!rpcMissing) throw error;
+        // Vercel deploys application code but does not run Supabase migrations. Keep charge editing
+        // compatible with the previous schema until the controlled update RPC is installed.
+        const { data, error: updateError } = await this.client
+          .from("rent_charges")
+          .update({ reason: normalizedReason, amount })
+          .eq("id", id)
+          .select("id")
+          .maybeSingle();
+        if (updateError) throw updateError;
+        if (!data) throw new Error("Bill charge not found or you no longer have permission to edit it.");
+      }
       return;
     }
     const workspace = this.requireDemo();

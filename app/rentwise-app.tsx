@@ -105,6 +105,12 @@ function cn(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
 }
 
+function readableError(reason: unknown, fallback: string) {
+  if (reason instanceof Error && reason.message) return reason.message;
+  if (reason && typeof reason === "object" && "message" in reason && typeof reason.message === "string" && reason.message) return reason.message;
+  return fallback;
+}
+
 function formatMoney(value: number, symbol = "৳") {
   return `${symbol}${Math.round(value).toLocaleString("en-BD")}`;
 }
@@ -261,7 +267,7 @@ function DocumentHeader({ title, id, status, balance, symbol }: { title: string;
 
 function DocumentSignatures({ workspace, service }: { workspace: WorkspaceData; service: RentwiseDataService }) {
   const signatureUrl = useProfileImageUrl(service, workspace.settings.signature_path);
-  return <section className="document-signatures" aria-label="Document signatures"><div className="document-signature"><div className="signature-mark">{signatureUrl && <Image src={signatureUrl} alt="Landlord signature" width={138} height={43} unoptimized />}</div><strong>Landlord signature</strong><span>Authorized document</span></div><div className="document-signature"><div className="signature-mark" /><strong>Tenant signature</strong><span>Optional acknowledgement</span></div></section>;
+  return <section className="document-signatures" aria-label="Document signatures"><div className="document-signature"><div className="signature-mark">{signatureUrl && <Image src={signatureUrl} alt="Landlord signature" width={112} height={35} unoptimized />}</div><strong>Landlord signature</strong><span>Authorized document</span></div><div className="document-signature"><div className="signature-mark" /><strong>Tenant signature</strong><span>Optional acknowledgement</span></div></section>;
 }
 
 function AttachmentList({ workspace, service, entityType, entityId, onError }: { workspace: WorkspaceData; service: RentwiseDataService; entityType: "tenant" | "property" | "agreement" | "receipt" | "expense"; entityId: string; onError: (message: string) => void }) {
@@ -530,7 +536,7 @@ export default function RentwiseApp() {
     setError("");
     try { await operation(); await refresh(); closeForm(); notify(success); }
     catch (reason) {
-      const message = reason instanceof Error ? reason.message : "The change could not be saved.";
+      const message = readableError(reason, "The change could not be saved.");
       setError(message);
       notifyError(message);
     }

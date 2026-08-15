@@ -138,6 +138,8 @@ test("rent billing upgrade preserves monthly obligations and allocates multi-bil
   assert.match(service, /replace\(\/\^INV/);
   assert.match(service, /product:\s*"Rento"/);
   assert.match(service, /updateRentBillCharge/);
+  assert.match(service, /PGRST202/);
+  assert.match(service, /from\("rent_charges"\)\s*\.update/);
   assert.match(app, /\["Rento", "Rentwise"\]/);
   assert.doesNotMatch(sql, /'INV'/);
   assert.match(guardSql, /enforce_rent_invoice_payment_balance/);

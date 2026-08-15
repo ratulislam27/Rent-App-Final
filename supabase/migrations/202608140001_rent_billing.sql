@@ -12,7 +12,7 @@ alter table public.rent_receipts add column if not exists unallocated_amount num
 alter table public.rent_receipts alter column rent_period_id drop not null;
 
 with ranked as (
-  select id, 'INV' || lpad(row_number() over (partition by user_id order by rent_month, created_at, id)::text, 6, '0') as generated_id
+  select id, 'BIL' || lpad(row_number() over (partition by user_id order by rent_month, created_at, id)::text, 6, '0') as generated_id
   from public.rent_periods
 )
 update public.rent_periods p set display_id = ranked.generated_id
@@ -114,7 +114,7 @@ begin
           user_id, display_id, agreement_id, rent_month, issue_date, due_date, base_rent
         ) values (
           p_user,
-          public.next_owner_display_id(p_user, 'rent_bill', 'INV', 6),
+          public.next_owner_display_id(p_user, 'rent_bill', 'BIL', 6),
           v_agreement.id,
           v_month,
           v_month,
@@ -385,7 +385,7 @@ begin
   from jsonb_to_recordset(coalesce(p_backup->'increments', '[]'::jsonb)) as x(id uuid, agreement_id uuid, start_month date, end_month date, new_base_rent numeric, note text, created_at timestamptz);
 
   insert into public.rent_periods(id, user_id, display_id, agreement_id, rent_month, issue_date, due_date, base_rent, void_reason, voided_at, created_at, updated_at)
-  select x.id, v_user, coalesce(x.display_id, public.next_owner_display_id(v_user, 'rent_bill', 'INV', 6)), x.agreement_id, x.rent_month,
+  select x.id, v_user, coalesce(x.display_id, public.next_owner_display_id(v_user, 'rent_bill', 'BIL', 6)), x.agreement_id, x.rent_month,
     coalesce(x.issue_date, x.rent_month),
     coalesce(x.due_date, date_trunc('month', x.rent_month + make_interval(months => a.collection_offset))::date + (a.due_day - 1)),
     x.base_rent, x.void_reason, x.voided_at, x.created_at, x.updated_at

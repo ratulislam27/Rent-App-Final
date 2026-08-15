@@ -84,7 +84,7 @@ h1, h2, h3,
 .profile-photo-controls > strong,
 .signature-picker-copy > strong,
 .schedule-callout strong,
-.document-identity > strong,
+.document-title-line > strong,
 .invoice-section-heading strong,
 .invoice-payment-empty strong,
 .document-section-title strong { text-transform: capitalize; }
@@ -424,15 +424,18 @@ button.void-row:hover { background: var(--red-soft); }
 
 .receipt-paper, .report-paper { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
 .receipt-paper { max-width: 760px; padding: clamp(20px, 5vw, 42px); }
-.document-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-bottom: 20px; border-bottom: 2px solid var(--text); }
-.document-identity > span, .document-identity > strong, .document-identity > small { display: block; }
-.document-identity > span { color: var(--text-soft); font-size: 9px; font-weight: 650; text-transform: uppercase; letter-spacing: .1em; }
-.document-identity > strong { margin-top: 5px; font-size: clamp(22px, 5vw, 32px); font-weight: 720; letter-spacing: -.045em; }
-.document-identity > small { margin-top: 6px; color: var(--text-soft); font-family: var(--font-geist-mono), monospace; font-size: 10px; }
-.document-status { flex: 0 0 auto; min-width: 142px; border-top: 2px solid currentColor; border-bottom: 1px solid currentColor; padding: 8px 2px 7px; text-align: right; }
+.document-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 20px; border-bottom: 2px solid var(--text); }
+.document-identity { min-width: 0; }
+.document-title-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 12px; }
+.document-title-line > strong { font-size: clamp(22px, 5vw, 32px); font-weight: 720; line-height: 1.08; letter-spacing: -.045em; }
+.document-title-line > span { color: var(--text-soft); font-family: var(--font-geist-mono), monospace; font-size: 10px; font-weight: 450; letter-spacing: .01em; }
+.document-date { display: flex; align-items: baseline; gap: 7px; margin-top: 9px; color: var(--text-soft); font-size: 10px; }
+.document-date > span { color: var(--text-faint); font-size: 8px; font-weight: 620; text-transform: uppercase; letter-spacing: .07em; }
+.document-date > time { font-weight: 520; }
+.document-status { flex: 0 0 auto; min-width: 142px; padding-top: 1px; text-align: right; }
 .document-status > strong, .document-status > span { display: block; }
-.document-status > strong { font-size: 20px; font-weight: 760; line-height: 1; text-transform: uppercase; letter-spacing: .16em; }
-.document-status > span { margin-top: 7px; color: var(--text-soft); font-size: 10px; line-height: 1.2; }
+.document-status > strong { font-size: clamp(22px, 5vw, 32px); font-weight: 720; line-height: 1.08; letter-spacing: -.045em; }
+.document-status > span { margin-top: 8px; color: var(--text-soft); font-size: 10px; line-height: 1.2; }
 .document-status.is-paid { color: var(--green); }
 .document-status.is-due { color: var(--amber); }
 .document-status.is-void { color: var(--red); }
@@ -479,6 +482,8 @@ button.void-row:hover { background: var(--red-soft); }
 .invoice-payment-reference small, .invoice-payment-amount small, .invoice-payment-balance small { margin-top: 3px; }
 .invoice-payment-amount, .invoice-payment-balance { text-align: right; }
 .invoice-payment-amount strong { color: var(--green); }
+.invoice-payment-balance.is-owed strong { color: var(--red); }
+.invoice-payment-balance.is-credit strong, .invoice-payment-balance.is-settled strong { color: var(--green); }
 .invoice-payment-row > svg { color: var(--text-faint); }
 .invoice-payment-row.is-void { color: var(--red); background: color-mix(in srgb, var(--red-soft) 42%, transparent); }
 .invoice-payment-row.is-void small, .invoice-payment-row.is-void .invoice-payment-date, .invoice-payment-row.is-void > svg { color: var(--red); }
@@ -505,8 +510,8 @@ button.void-row:hover { background: var(--red-soft); }
 .document-note { margin-top: 14px; border-left: 3px solid var(--line-strong); padding: 2px 0 2px 11px; }
 .document-note span { color: var(--text-soft); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
 .document-note p { margin-top: 4px; font-size: 10px; line-height: 1.45; }
-.document-signatures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(28px, 8vw, 72px); margin-top: 30px; }
-.document-signature { min-width: 0; }
+.document-signatures { display: grid; grid-template-columns: repeat(2, minmax(0, 250px)); justify-content: center; gap: clamp(36px, 7vw, 64px); max-width: 568px; margin: 30px auto 0; }
+.document-signature { width: 100%; min-width: 0; text-align: center; }
 .signature-mark { display: flex; align-items: flex-end; justify-content: center; height: 62px; border-bottom: 1px solid var(--text); }
 .signature-mark img { display: block; width: 100%; max-width: 190px; height: 58px; object-fit: contain; }
 .document-signature > strong, .document-signature > span { display: block; }
@@ -641,7 +646,7 @@ button.void-row:hover { background: var(--red-soft); }
   .invoice-payment-row:first-child { border-top: 0; }
   .invoice-payment-balance, .invoice-payment-row > svg { display: none; }
   .signature-picker { grid-template-columns: 1fr; }
-  .document-header { align-items: stretch; gap: 12px; }
+  .document-header { align-items: flex-start; gap: 12px; }
   .document-status { min-width: 134px; }
   .receipt-party { grid-template-columns: 1fr; gap: 14px; }
   .receipt-balance-summary strong { font-size: 17px; }
@@ -678,11 +683,9 @@ button.void-row:hover { background: var(--red-soft); }
   .receipt-paper, .report-paper { max-width: none; border: 0; border-radius: 0; padding: 0; }
   .receipt-paper { width: 100%; page-break-inside: avoid; break-inside: avoid-page; }
   .document-header { padding-bottom: 12px; }
-  .document-identity > strong { margin-top: 2px; font-size: 23px; }
-  .document-identity > small { margin-top: 3px; }
-  .document-status { min-width: 126px; padding: 5px 1px; }
-  .document-status.is-paid, .document-status.is-due, .document-status.is-void { color: #111; }
-  .document-status > strong { font-size: 15px; }
+  .document-title-line > strong, .document-status > strong { font-size: 23px; }
+  .document-date { margin-top: 5px; }
+  .document-status { min-width: 126px; padding-top: 0; }
   .document-status > span { margin-top: 4px; font-size: 8px; }
   .receipt-party { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 11px 0; }
   .receipt-party strong { margin-top: 3px; font-size: 12px; }
@@ -702,7 +705,7 @@ button.void-row:hover { background: var(--red-soft); }
   .receipt-balance-summary > div { padding: 8px 10px; }
   .receipt-balance-summary strong { margin-top: 3px; font-size: 15px; }
   .document-note { margin-top: 8px; }
-  .document-signatures { gap: 48px; margin-top: 16px; }
+  .document-signatures { grid-template-columns: repeat(2, minmax(0, 230px)); gap: 40px; max-width: 500px; margin-top: 16px; }
   .signature-mark { height: 45px; }
   .signature-mark img { height: 42px; }
   .document-signature > strong { margin-top: 4px; font-size: 9px; }

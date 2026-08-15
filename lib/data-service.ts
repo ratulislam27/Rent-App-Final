@@ -58,6 +58,7 @@ function nextDisplayId(prefix: string, records: { display_id: string }[], width:
 
 function normalizeWorkspaceNames(workspace: WorkspaceData): WorkspaceData {
   const normalizeLookup = (item: LookupOption) => ({ ...item, name: formatTitleCase(item.name) });
+  const normalizeBillNumber = (displayId: string) => displayId.replace(/^INV(?=\d+$)/, "BIL");
   return {
     ...workspace,
     profile: { ...workspace.profile, full_name: formatTitleCase(workspace.profile.full_name) },
@@ -66,6 +67,7 @@ function normalizeWorkspaceNames(workspace: WorkspaceData): WorkspaceData {
     expenseCategories: workspace.expenseCategories.map(normalizeLookup),
     properties: workspace.properties.map((item) => ({ ...item, name: formatTitleCase(item.name) })),
     tenants: workspace.tenants.map((item) => ({ ...item, name: formatTitleCase(item.name) })),
+    rentPeriods: workspace.rentPeriods.map((item) => ({ ...item, display_id: normalizeBillNumber(item.display_id) })),
     rentCharges: workspace.rentCharges.map((item) => ({ ...item, reason: formatTitleCase(item.reason) })),
     receipts: workspace.receipts.map((item) => ({ ...item, collected_by: item.collected_by ? formatTitleCase(item.collected_by) : null })),
     expenses: workspace.expenses.map((item) => ({ ...item, description: formatTitleCase(item.description) })),

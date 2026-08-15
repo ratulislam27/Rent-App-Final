@@ -190,11 +190,11 @@ export const demoWorkspace: WorkspaceData = {
   ],
   increments: [],
   rentPeriods: [
-    { id: "70000000-0000-4000-8000-000000000001", user_id: userId, display_id: "INV000001", agreement_id: "60000000-0000-4000-8000-000000000001", rent_month: "2026-07-01", issue_date: "2026-07-01", due_date: "2026-07-05", base_rent: 28000, void_reason: null, voided_at: null, created_at: now, updated_at: now },
-    { id: "70000000-0000-4000-8000-000000000002", user_id: userId, display_id: "INV000002", agreement_id: "60000000-0000-4000-8000-000000000001", rent_month: "2026-08-01", issue_date: "2026-08-01", due_date: "2026-08-05", base_rent: 28000, void_reason: null, voided_at: null, created_at: now, updated_at: now },
-    { id: "70000000-0000-4000-8000-000000000003", user_id: userId, display_id: "INV000003", agreement_id: "60000000-0000-4000-8000-000000000002", rent_month: "2026-06-01", issue_date: "2026-06-01", due_date: "2026-07-10", base_rent: 45000, void_reason: null, voided_at: null, created_at: now, updated_at: now },
-    { id: "70000000-0000-4000-8000-000000000004", user_id: userId, display_id: "INV000004", agreement_id: "60000000-0000-4000-8000-000000000002", rent_month: "2026-07-01", issue_date: "2026-07-01", due_date: "2026-08-10", base_rent: 45000, void_reason: null, voided_at: null, created_at: now, updated_at: now },
-    { id: "70000000-0000-4000-8000-000000000005", user_id: userId, display_id: "INV000005", agreement_id: "60000000-0000-4000-8000-000000000002", rent_month: "2026-08-01", issue_date: "2026-08-01", due_date: "2026-09-10", base_rent: 45000, void_reason: null, voided_at: null, created_at: now, updated_at: now },
+    { id: "70000000-0000-4000-8000-000000000001", user_id: userId, display_id: "BIL000001", agreement_id: "60000000-0000-4000-8000-000000000001", rent_month: "2026-07-01", issue_date: "2026-07-01", due_date: "2026-07-05", base_rent: 28000, void_reason: null, voided_at: null, created_at: now, updated_at: now },
+    { id: "70000000-0000-4000-8000-000000000002", user_id: userId, display_id: "BIL000002", agreement_id: "60000000-0000-4000-8000-000000000001", rent_month: "2026-08-01", issue_date: "2026-08-01", due_date: "2026-08-05", base_rent: 28000, void_reason: null, voided_at: null, created_at: now, updated_at: now },
+    { id: "70000000-0000-4000-8000-000000000003", user_id: userId, display_id: "BIL000003", agreement_id: "60000000-0000-4000-8000-000000000002", rent_month: "2026-06-01", issue_date: "2026-06-01", due_date: "2026-07-10", base_rent: 45000, void_reason: null, voided_at: null, created_at: now, updated_at: now },
+    { id: "70000000-0000-4000-8000-000000000004", user_id: userId, display_id: "BIL000004", agreement_id: "60000000-0000-4000-8000-000000000002", rent_month: "2026-07-01", issue_date: "2026-07-01", due_date: "2026-08-10", base_rent: 45000, void_reason: null, voided_at: null, created_at: now, updated_at: now },
+    { id: "70000000-0000-4000-8000-000000000005", user_id: userId, display_id: "BIL000005", agreement_id: "60000000-0000-4000-8000-000000000002", rent_month: "2026-08-01", issue_date: "2026-08-01", due_date: "2026-09-10", base_rent: 45000, void_reason: null, voided_at: null, created_at: now, updated_at: now },
   ],
   rentCharges: [],
   receipts: [

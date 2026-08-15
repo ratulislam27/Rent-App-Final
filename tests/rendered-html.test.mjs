@@ -101,9 +101,10 @@ test("database migration enforces isolated IDs and atomic financial writes", asy
 });
 
 test("rent billing upgrade preserves monthly obligations and allocates multi-bill payments", async () => {
-  const [sql, guardSql, app, service] = await Promise.all([
+  const [sql, guardSql, billNumberSql, app, service] = await Promise.all([
     readFile(new URL("../supabase/migrations/202608140001_rent_billing.sql", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/202608150001_rent_invoice_payment_guard.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/202608150003_rent_bill_numbers.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/rentwise-app.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/data-service.ts", import.meta.url), "utf8"),
   ]);
@@ -113,7 +114,7 @@ test("rent billing upgrade preserves monthly obligations and allocates multi-bil
     /create or replace function public\.ensure_rent_bills/,
     /create or replace function public\.record_rent_payment/,
     /create or replace function public\.apply_available_rent_credit/,
-    /'rent_bill', 'INV', 6/,
+    /'rent_bill', 'BIL', 6/,
     /A payment allocation exceeds the bill balance/,
     /rentwise-generate-monthly-bills/,
   ]) assert.match(sql, pattern);
@@ -122,18 +123,24 @@ test("rent billing upgrade preserves monthly obligations and allocates multi-bil
   assert.match(app, /Remaining as tenant credit/);
   assert.match(app, /Every receipt allocated to this bill/);
   assert.match(app, /Payment history/);
+  assert.match(app, /Amount left/);
+  assert.match(app, /tenant still owes/);
   assert.match(app, /Balance due/);
   assert.match(app, /Not counted/);
   assert.match(service, /rentBillRemaining/);
   assert.match(service, /rentBillPaymentHistory/);
   assert.match(service, /balanceAfter/);
   assert.match(service, /receiptAllocations/);
+  assert.match(service, /replace\(\/\^INV/);
   assert.match(service, /product:\s*"Rento"/);
   assert.match(app, /\["Rento", "Rentwise"\]/);
-  assert.doesNotMatch(sql, /'INV-'/);
+  assert.doesNotMatch(sql, /'INV'/);
   assert.match(guardSql, /enforce_rent_invoice_payment_balance/);
   assert.match(guardSql, /pg_advisory_xact_lock/);
   assert.match(guardSql, /v_paid \+ new\.allocated_amount > v_bill_total/);
+  assert.match(billNumberSql, /INV000001 becomes BIL000001/);
+  assert.match(billNumberSql, /normalize_rent_bill_display_id/);
+  assert.match(billNumberSql, /'rent_bill', 'BIL', 6/);
 });
 
 test("private profile pictures support landlords and tenants", async () => {

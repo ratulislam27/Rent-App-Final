@@ -121,11 +121,11 @@ test("rent billing upgrade preserves monthly obligations and allocates multi-bil
   assert.match(app, /Rent bills & payments/);
   assert.match(app, /Oldest due first/);
   assert.match(app, /Remaining as tenant credit/);
-  assert.match(app, /Every receipt allocated to this bill/);
+  assert.match(app, /Payment activity for this bill/);
   assert.match(app, /Payment history/);
   assert.match(app, /Amount left/);
-  assert.match(app, /tenant still owes/);
-  assert.match(app, /Balance due/);
+  assert.match(app, /still due/);
+  assert.match(app, /Amount due/);
   assert.match(app, /Not counted/);
   assert.match(service, /rentBillRemaining/);
   assert.match(service, /rentBillPaymentHistory/);
@@ -171,7 +171,7 @@ test("tenant documents show payment status, signatures and compact A4 print layo
     readFile(new URL("../supabase/migrations/202608150002_document_signatures.sql", import.meta.url), "utf8"),
   ]);
   assert.match(app, /function DocumentHeader/);
-  assert.match(app, /Balance due/);
+  assert.match(app, /Amount due/);
   assert.match(app, /function DocumentSignatures/);
   assert.match(app, /Tenant signature/);
   assert.match(app, /function SignaturePicker/);

@@ -34,11 +34,13 @@ test("health endpoint reports a ready service", async () => {
 });
 
 test("mobile design keeps restrained geometry, fixed navigation, themes and reduced motion", async () => {
-  const [css, manifest, app, layout] = await Promise.all([
+  const [css, manifest, app, layout, serviceWorker, nextConfig] = await Promise.all([
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../app/manifest.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/rentwise-app.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../public/sw.js", import.meta.url), "utf8"),
+    readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
   ]);
   assert.match(css, /--radius-lg:\s*12px/);
   assert.match(css, /font-family:\s*var\(--font-geist\)/);
@@ -77,6 +79,13 @@ test("mobile design keeps restrained geometry, fixed navigation, themes and redu
   assert.match(manifest, /icon-512-v3\.png/);
   assert.match(manifest, /icon-192-v3\.png/);
   assert.match(manifest, /purpose:\s*"maskable"/);
+  assert.match(app, /updateViaCache:\s*"none"/);
+  assert.match(app, /controllerchange/);
+  assert.match(serviceWorker, /rento-shell-.*v4/s);
+  assert.match(serviceWorker, /\["style", "script", "worker"\]/);
+  assert.match(serviceWorker, /fetch\(event\.request\)[\s\S]*catch\(\(\) => caches\.match\(event\.request\)\)/);
+  assert.doesNotMatch(serviceWorker, /caches\.match\(event\.request\)\.then\(\(cached\) => cached \|\| fetch\(event\.request\)[\s\S]*\["style", "script"/);
+  assert.match(nextConfig, /no-cache, no-store, must-revalidate/);
 });
 
 test("database migration enforces isolated IDs and atomic financial writes", async () => {

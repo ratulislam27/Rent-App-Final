@@ -164,17 +164,21 @@ test("tenant documents show payment status, signatures and compact A4 print layo
     readFile(new URL("../supabase/migrations/202608150002_document_signatures.sql", import.meta.url), "utf8"),
   ]);
   assert.match(app, /function DocumentHeader/);
-  assert.match(app, /BALANCE DUE/);
+  assert.match(app, /Balance due/);
   assert.match(app, /function DocumentSignatures/);
   assert.match(app, /Tenant signature/);
   assert.match(app, /function SignaturePicker/);
   assert.match(app, /Document settings/);
+  assert.match(app, /maximum 10 MB/);
+  assert.match(app, /signature-file-error/);
   assert.doesNotMatch(app, /receipt_name/);
   assert.doesNotMatch(app, /installment/i);
   assert.doesNotMatch(demo, /installment/i);
   assert.match(types, /signature_path:\s*string \| null/);
   assert.match(service, /replaceDocumentSignature/);
   assert.match(service, /removeDocumentSignature/);
+  assert.match(service, /saveDocumentSettings/);
+  assert.match(service, /Signature upload failed/);
   assert.match(migration, /add column if not exists signature_path text/);
   assert.match(css, /@page\s*\{\s*size:\s*A4 portrait/);
   assert.match(css, /break-inside:\s*avoid-page/);

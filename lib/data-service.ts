@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { cloneDemoWorkspace } from "./demo-data";
+import { formatTitleCase } from "./text";
 import type {
   Agreement,
   AdminUser,
@@ -29,6 +30,13 @@ const numberFields = new Set([
   "allocated_amount",
 ]);
 
+export const MAX_DOCUMENT_SIGNATURE_BYTES = 10 * 1024 * 1024;
+
+export function validateDocumentSignatureFile(file: Pick<File, "type" | "size">) {
+  if (!file.type.match(/^image\/(jpeg|png|webp)$/)) throw new Error("Choose a JPG, PNG or WebP signature image.");
+  if (file.size > MAX_DOCUMENT_SIGNATURE_BYTES) throw new Error("Signature images must be 10 MB or smaller.");
+}
+
 function coerceNumbers<T>(rows: T[]): T[] {
   return rows.map((row) => {
     const output = { ...(row as Record<string, unknown>) };
@@ -48,6 +56,22 @@ function nextDisplayId(prefix: string, records: { display_id: string }[], width:
   return `${prefix}${String(current + 1).padStart(width, "0")}`;
 }
 
+function normalizeWorkspaceNames(workspace: WorkspaceData): WorkspaceData {
+  const normalizeLookup = (item: LookupOption) => ({ ...item, name: formatTitleCase(item.name) });
+  return {
+    ...workspace,
+    profile: { ...workspace.profile, full_name: formatTitleCase(workspace.profile.full_name) },
+    propertyTypes: workspace.propertyTypes.map(normalizeLookup),
+    paymentMethods: workspace.paymentMethods.map(normalizeLookup),
+    expenseCategories: workspace.expenseCategories.map(normalizeLookup),
+    properties: workspace.properties.map((item) => ({ ...item, name: formatTitleCase(item.name) })),
+    tenants: workspace.tenants.map((item) => ({ ...item, name: formatTitleCase(item.name) })),
+    rentCharges: workspace.rentCharges.map((item) => ({ ...item, reason: formatTitleCase(item.reason) })),
+    receipts: workspace.receipts.map((item) => ({ ...item, collected_by: item.collected_by ? formatTitleCase(item.collected_by) : null })),
+    expenses: workspace.expenses.map((item) => ({ ...item, description: formatTitleCase(item.description) })),
+  };
+}
+
 export class RentwiseDataService {
   private demo: WorkspaceData | null;
   private readonly imageUrlCache = new Map<string, { url: string; expiresAt: number }>();
@@ -65,7 +89,7 @@ export class RentwiseDataService {
   }
 
   async loadWorkspace(user: User | null): Promise<WorkspaceData> {
-    if (!this.client || !user) return structuredClone(this.demo ?? cloneDemoWorkspace());
+    if (!this.client || !user) return normalizeWorkspaceNames(structuredClone(this.demo ?? cloneDemoWorkspace()));
     const ensured = await this.client.rpc("ensure_rent_bills");
     if (ensured.error) throw ensured.error;
     const tables = [
@@ -103,7 +127,7 @@ export class RentwiseDataService {
           ? "occupied" as const
           : "vacant" as const,
     }));
-    return {
+    return normalizeWorkspaceNames({
       profile: profileResult.data as Profile,
       settings: settingsResult.data as UserSettings,
       propertyTypes: propertyTypes as LookupOption[],
@@ -120,7 +144,7 @@ export class RentwiseDataService {
       expenses: coerceNumbers(expenses as Expense[]),
       allocations: coerceNumbers(allocations as ExpenseAllocation[]),
       attachments: attachments as Attachment[],
-    };
+    });
   }
 
   private requireDemo() {
@@ -129,8 +153,9 @@ export class RentwiseDataService {
   }
 
   async createProperty(userId: string, values: Partial<Property>): Promise<Property> {
+    const normalizedValues = { ...values, ...(typeof values.name === "string" ? { name: formatTitleCase(values.name) } : {}) };
     if (this.client) {
-      const { data, error } = await this.client.from("properties").insert({ ...values, user_id: userId }).select().single();
+      const { data, error } = await this.client.from("properties").insert({ ...normalizedValues, user_id: userId }).select().single();
       if (error) throw error;
       return data as Property;
     }
@@ -138,8 +163,8 @@ export class RentwiseDataService {
     const now = new Date().toISOString();
     const item: Property = {
       id: temporaryId("property"), user_id: userId, display_id: nextDisplayId("PRP", workspace.properties, 4),
-      name: values.name ?? "Untitled property", property_type_id: values.property_type_id ?? null,
-      location: values.location ?? "", status: values.status ?? "vacant", notes: values.notes ?? "",
+      name: normalizedValues.name ?? "Untitled Property", property_type_id: normalizedValues.property_type_id ?? null,
+      location: normalizedValues.location ?? "", status: normalizedValues.status ?? "vacant", notes: normalizedValues.notes ?? "",
       archived_at: null, created_at: now, updated_at: now,
     };
     workspace.properties.push(item);
@@ -147,13 +172,14 @@ export class RentwiseDataService {
   }
 
   async updateProperty(id: string, values: Partial<Property>) {
+    const normalizedValues = { ...values, ...(typeof values.name === "string" ? { name: formatTitleCase(values.name) } : {}) };
     if (this.client) {
-      const { error } = await this.client.from("properties").update(values).eq("id", id);
+      const { error } = await this.client.from("properties").update(normalizedValues).eq("id", id);
       if (error) throw error;
       return;
     }
     const item = this.requireDemo().properties.find((entry) => entry.id === id);
-    if (item) Object.assign(item, values, { updated_at: new Date().toISOString() });
+    if (item) Object.assign(item, normalizedValues, { updated_at: new Date().toISOString() });
   }
 
   async deleteUnusedProperty(id: string) {
@@ -170,8 +196,9 @@ export class RentwiseDataService {
   }
 
   async createTenant(userId: string, values: Partial<Tenant>): Promise<Tenant> {
+    const normalizedValues = { ...values, ...(typeof values.name === "string" ? { name: formatTitleCase(values.name) } : {}) };
     if (this.client) {
-      const { data, error } = await this.client.from("tenants").insert({ ...values, user_id: userId }).select().single();
+      const { data, error } = await this.client.from("tenants").insert({ ...normalizedValues, user_id: userId }).select().single();
       if (error) throw error;
       return data as Tenant;
     }
@@ -179,22 +206,23 @@ export class RentwiseDataService {
     const now = new Date().toISOString();
     const item: Tenant = {
       id: temporaryId("tenant"), user_id: userId, display_id: nextDisplayId("TEN", workspace.tenants, 4),
-      name: values.name ?? "Unnamed tenant", phone: values.phone ?? "", email: values.email ?? null,
-      address: values.address ?? "", nid: values.nid ?? null, profile_image_path: null,
-      notes: values.notes ?? "", archived_at: null, created_at: now, updated_at: now,
+      name: normalizedValues.name ?? "Unnamed Tenant", phone: normalizedValues.phone ?? "", email: normalizedValues.email ?? null,
+      address: normalizedValues.address ?? "", nid: normalizedValues.nid ?? null, profile_image_path: null,
+      notes: normalizedValues.notes ?? "", archived_at: null, created_at: now, updated_at: now,
     };
     workspace.tenants.push(item);
     return item;
   }
 
   async updateTenant(id: string, values: Partial<Tenant>) {
+    const normalizedValues = { ...values, ...(typeof values.name === "string" ? { name: formatTitleCase(values.name) } : {}) };
     if (this.client) {
-      const { error } = await this.client.from("tenants").update(values).eq("id", id);
+      const { error } = await this.client.from("tenants").update(normalizedValues).eq("id", id);
       if (error) throw error;
       return;
     }
     const item = this.requireDemo().tenants.find((entry) => entry.id === id);
-    if (item) Object.assign(item, values, { updated_at: new Date().toISOString() });
+    if (item) Object.assign(item, normalizedValues, { updated_at: new Date().toISOString() });
   }
 
   async deleteUnusedTenant(id: string) {
@@ -259,6 +287,7 @@ export class RentwiseDataService {
   }
 
   async createRentPayment(userId: string, input: CreateRentPaymentInput): Promise<RentReceipt> {
+    const collectedBy = formatTitleCase(input.collectedBy);
     if (this.client) {
       const { data, error } = await this.client.rpc("record_rent_payment", {
         p_request_key: input.requestKey,
@@ -266,7 +295,7 @@ export class RentwiseDataService {
         p_collection_date: input.collectionDate,
         p_amount: input.amount,
         p_payment_method_id: input.paymentMethodId,
-        p_collected_by: input.collectedBy,
+        p_collected_by: collectedBy,
         p_notes: input.notes,
         p_allocations: input.allocations.map((item) => ({ rent_period_id: item.rentPeriodId, amount: item.amount })),
       });
@@ -283,7 +312,7 @@ export class RentwiseDataService {
       id: temporaryId("receipt"), user_id: userId, display_id: nextDisplayId("RCV", workspace.receipts, 6), request_key: input.requestKey,
       agreement_id: input.agreementId, rent_period_id: primaryBill, collection_date: input.collectionDate, amount: input.amount,
       unallocated_amount: Math.max(0, input.amount - allocationTotal), payment_method_id: input.paymentMethodId,
-      collected_by: input.collectedBy || null, notes: input.notes, status: "valid", void_reason: null, voided_at: null,
+      collected_by: collectedBy || null, notes: input.notes, status: "valid", void_reason: null, voided_at: null,
       created_at: now, updated_at: now,
     };
     workspace.receipts.push(receipt);
@@ -295,16 +324,17 @@ export class RentwiseDataService {
   }
 
   async addRentBillCharge(userId: string, rentPeriodId: string, reason: string, amount: number) {
+    const normalizedReason = formatTitleCase(reason);
     if (this.client) {
       const { error } = await this.client.rpc("add_rent_bill_charge", {
         p_rent_period_id: rentPeriodId,
-        p_reason: reason,
+        p_reason: normalizedReason,
         p_amount: amount,
       });
       if (error) throw error;
       return;
     }
-    this.requireDemo().rentCharges.push({ id: temporaryId("charge"), user_id: userId, rent_period_id: rentPeriodId, reason, amount, created_at: new Date().toISOString() });
+    this.requireDemo().rentCharges.push({ id: temporaryId("charge"), user_id: userId, rent_period_id: rentPeriodId, reason: normalizedReason, amount, created_at: new Date().toISOString() });
   }
 
   async voidReceipt(id: string, reason: string) {
@@ -319,10 +349,11 @@ export class RentwiseDataService {
   }
 
   async createExpense(userId: string, values: Partial<Expense>, allocations: { property_id: string; allocated_amount: number }[], requestKey: string): Promise<Expense> {
+    const normalizedDescription = formatTitleCase(values.description ?? "");
     if (this.client) {
       const { data, error } = await this.client.rpc("record_expense", {
         p_request_key: requestKey,
-        p_description: values.description ?? "",
+        p_description: normalizedDescription,
         p_expense_date: values.expense_date,
         p_amount: values.amount ?? 0,
         p_category_id: values.category_id,
@@ -338,7 +369,7 @@ export class RentwiseDataService {
     const now = new Date().toISOString();
     const item: Expense = {
       id: temporaryId("expense"), user_id: userId, display_id: nextDisplayId("EXP", workspace.expenses, 6), request_key: requestKey,
-      description: values.description ?? "Untitled expense", expense_date: values.expense_date!, amount: Number(values.amount ?? 0),
+      description: normalizedDescription || "Untitled Expense", expense_date: values.expense_date!, amount: Number(values.amount ?? 0),
       category_id: values.category_id ?? null, notes: values.notes ?? "", status: "valid", archived_at: null,
       created_at: now, updated_at: now,
     };
@@ -348,12 +379,13 @@ export class RentwiseDataService {
   }
 
   async updateProfile(id: string, values: Partial<Profile>) {
+    const normalizedValues = { ...values, ...(typeof values.full_name === "string" ? { full_name: formatTitleCase(values.full_name) } : {}) };
     if (this.client) {
-      const { error } = await this.client.from("profiles").update(values).eq("id", id);
+      const { error } = await this.client.from("profiles").update(normalizedValues).eq("id", id);
       if (error) throw error;
       return;
     }
-    Object.assign(this.requireDemo().profile, values);
+    Object.assign(this.requireDemo().profile, normalizedValues);
   }
 
   async replaceProfileImage(userId: string, target: "profile" | "tenant", targetId: string, file: File, previousPath: string | null) {
@@ -416,8 +448,7 @@ export class RentwiseDataService {
   }
 
   async replaceDocumentSignature(userId: string, file: File, previousPath: string | null) {
-    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) throw new Error("Choose a JPG, PNG or WebP signature image.");
-    if (file.size > 5 * 1024 * 1024) throw new Error("Signature images must be 5 MB or smaller.");
+    validateDocumentSignatureFile(file);
     if (!this.client) {
       if (previousPath?.startsWith("blob:")) URL.revokeObjectURL(previousPath);
       const path = URL.createObjectURL(file);
@@ -460,15 +491,56 @@ export class RentwiseDataService {
     Object.assign(this.requireDemo().settings, values);
   }
 
+  async saveDocumentSettings(userId: string, values: Partial<UserSettings>, signature: File | null, previousPath: string | null, removeSignature: boolean) {
+    if (signature) validateDocumentSignatureFile(signature);
+    if (!this.client) {
+      const workspace = this.requireDemo();
+      let signaturePath = previousPath;
+      if (signature) {
+        if (previousPath?.startsWith("blob:")) URL.revokeObjectURL(previousPath);
+        signaturePath = URL.createObjectURL(signature);
+      } else if (removeSignature) {
+        if (previousPath?.startsWith("blob:")) URL.revokeObjectURL(previousPath);
+        signaturePath = null;
+      }
+      Object.assign(workspace.settings, values, { signature_path: signaturePath });
+      return;
+    }
+
+    let nextPath = previousPath;
+    let uploadedPath: string | null = null;
+    if (signature) {
+      const extension = signature.type === "image/png" ? "png" : signature.type === "image/webp" ? "webp" : "jpg";
+      uploadedPath = `${userId}/document-signatures/${crypto.randomUUID()}.${extension}`;
+      const upload = await this.client.storage.from("rentwise-private").upload(uploadedPath, signature, { contentType: signature.type, upsert: false });
+      if (upload.error) throw new Error(`Signature upload failed: ${upload.error.message}`);
+      nextPath = uploadedPath;
+    } else if (removeSignature) {
+      nextPath = null;
+    }
+
+    const update = await this.client.from("user_settings").update({ ...values, signature_path: nextPath }).eq("user_id", userId);
+    if (update.error) {
+      if (uploadedPath) await this.client.storage.from("rentwise-private").remove([uploadedPath]);
+      throw new Error(`Document settings could not be saved: ${update.error.message}`);
+    }
+
+    if (previousPath !== nextPath) {
+      this.imageUrlCache.delete(previousPath ?? "");
+      if (previousPath) await this.client.storage.from("rentwise-private").remove([previousPath]);
+    }
+  }
+
   async addLookup(table: "property_types" | "payment_methods" | "expense_categories", userId: string, name: string) {
+    const normalizedName = formatTitleCase(name);
     if (this.client) {
-      const { error } = await this.client.from(table).insert({ user_id: userId, name });
+      const { error } = await this.client.from(table).insert({ user_id: userId, name: normalizedName });
       if (error) throw error;
       return;
     }
     const workspace = this.requireDemo();
     const key = table === "property_types" ? "propertyTypes" : table === "payment_methods" ? "paymentMethods" : "expenseCategories";
-    workspace[key].push({ id: temporaryId("option"), user_id: userId, name, is_active: true });
+    workspace[key].push({ id: temporaryId("option"), user_id: userId, name: normalizedName, is_active: true });
   }
 
   async toggleLookup(table: "property_types" | "payment_methods" | "expense_categories", id: string, active: boolean) {

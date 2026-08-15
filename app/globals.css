@@ -254,17 +254,18 @@ button.record-row:hover { background: var(--surface-soft); }
 .record-end { flex: 0 0 auto; min-width: 0; text-align: right; font-size: 13px; font-weight: 600; }
 .record-end strong, .record-end small { display: block; }
 .record-end small { margin-top: 4px; color: var(--text-soft); font-size: 10px; font-weight: 450; }
+.record-end .status-label { justify-content: flex-end; margin-top: 5px; margin-left: auto; }
 .row-chevron { flex: 0 0 auto; color: var(--text-faint); }
 .icon-tile { display: grid; place-items: center; flex: 0 0 auto; width: 38px; height: 38px; border-radius: var(--radius-sm); color: var(--text-soft); background: var(--surface-soft); }
 .icon-tile-positive { color: var(--green); background: var(--green-soft); }
 .icon-tile-warning { color: var(--amber); background: var(--amber-soft); }
 .icon-tile-danger { color: var(--red); background: var(--red-soft); }
-.status-pill { display: inline-flex; align-items: center; gap: 5px; width: fit-content; border-radius: 99px; padding: 5px 8px; color: var(--text-soft); background: var(--surface-soft); font-size: 10px; font-weight: 570; text-transform: capitalize; white-space: nowrap; }
-.status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-.status-positive { color: var(--green); background: var(--green-soft); }
-.status-warning { color: var(--amber); background: var(--amber-soft); }
-.status-danger { color: var(--red); background: var(--red-soft); }
-.status-info { color: var(--blue); background: var(--blue-soft); }
+.status-label { display: inline-flex; align-items: center; gap: 6px; width: fit-content; color: var(--text-soft); font-size: 10px; font-weight: 570; line-height: 1.25; text-transform: capitalize; white-space: nowrap; }
+.status-marker { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 12%, transparent); }
+.status-positive { color: var(--green); }
+.status-warning { color: var(--amber); }
+.status-danger { color: var(--red); }
+.status-info { color: var(--blue); }
 .positive-value { color: var(--green) !important; }
 .text-danger { color: var(--red) !important; }
 .void-row { opacity: .66; }
@@ -407,6 +408,52 @@ button.record-row:hover { background: var(--surface-soft); }
 .receipt-footer p { margin-top: 10px; }
 .void-watermark { position: absolute; z-index: 1; top: 38%; left: 50%; border: 5px solid var(--red); padding: 8px 18px; color: var(--red); font-size: 38px; font-weight: 750; letter-spacing: .12em; transform: translate(-50%, -50%) rotate(-12deg); opacity: .16; }
 .receipt-paper.is-void { opacity: .78; }
+.invoice-balance-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: hidden; margin-top: 20px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.invoice-balance-summary > div { min-width: 0; padding: 13px; border-right: 1px solid var(--line); background: var(--surface-soft); }
+.invoice-balance-summary > div:last-child { border-right: 0; }
+.invoice-balance-summary span, .invoice-balance-summary strong { display: block; }
+.invoice-balance-summary span { color: var(--text-soft); font-size: 9px; text-transform: uppercase; letter-spacing: .055em; }
+.invoice-balance-summary strong { overflow: hidden; margin-top: 6px; font-size: clamp(15px, 3vw, 20px); letter-spacing: -.025em; text-overflow: ellipsis; white-space: nowrap; }
+.invoice-balance-summary .has-balance strong { color: var(--red); }
+.invoice-balance-summary .is-settled strong { color: var(--green); }
+.invoice-state { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 11px 12px; background: var(--surface-soft); }
+.invoice-state > svg { flex: 0 0 auto; }
+.invoice-state strong, .invoice-state span { display: block; }
+.invoice-state strong { font-size: 11px; }
+.invoice-state span { margin-top: 3px; color: var(--text-soft); font-size: 10px; line-height: 1.4; }
+.invoice-state.is-paid { border-color: color-mix(in srgb, var(--green) 24%, var(--line)); background: var(--green-soft); }
+.invoice-state.is-paid > svg, .invoice-state.is-paid > div > strong { color: var(--green); }
+.invoice-state.is-partial { border-color: color-mix(in srgb, var(--amber) 24%, var(--line)); background: var(--amber-soft); }
+.invoice-state.is-partial > svg, .invoice-state.is-partial > div > strong { color: var(--amber); }
+.invoice-state.is-unpaid > svg { color: var(--text-soft); }
+.invoice-payments { margin-top: 28px; }
+.invoice-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.invoice-section-heading strong, .invoice-section-heading span { display: block; }
+.invoice-section-heading strong { font-size: 13px; }
+.invoice-section-heading span { margin-top: 3px; color: var(--text-soft); font-size: 9px; }
+.invoice-section-heading > span { flex: 0 0 auto; margin: 0; }
+.invoice-payment-list { overflow: hidden; }
+.invoice-payment-columns, .invoice-payment-row { display: grid; grid-template-columns: minmax(88px, .75fr) minmax(150px, 1.35fr) minmax(80px, .7fr) minmax(80px, .7fr) 15px; align-items: center; gap: 10px; }
+.invoice-payment-columns { padding: 9px 0 6px; color: var(--text-faint); font-size: 8px; text-transform: uppercase; letter-spacing: .055em; }
+.invoice-payment-columns span:nth-child(n + 3) { text-align: right; }
+.invoice-payment-row { width: 100%; min-height: 54px; border: 0; border-top: 1px solid var(--line); padding: 8px 0; color: var(--text); background: transparent; text-align: left; cursor: pointer; }
+.invoice-payment-columns + .invoice-payment-row { border-top: 0; }
+.invoice-payment-row:hover { background: var(--surface-soft); }
+.invoice-payment-row > span { min-width: 0; }
+.invoice-payment-row strong, .invoice-payment-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.invoice-payment-row strong { font-size: 11px; }
+.invoice-payment-row small, .invoice-payment-date { color: var(--text-soft); font-size: 9px; }
+.invoice-payment-reference small, .invoice-payment-amount small, .invoice-payment-balance small { margin-top: 3px; }
+.invoice-payment-amount, .invoice-payment-balance { text-align: right; }
+.invoice-payment-amount strong { color: var(--green); }
+.invoice-payment-row > svg { color: var(--text-faint); }
+.invoice-payment-row.is-void { opacity: .62; }
+.invoice-payment-row.is-void .invoice-payment-amount strong { color: var(--red); text-decoration: line-through; }
+.invoice-payment-empty { display: flex; align-items: flex-start; gap: 10px; padding: 18px 0 2px; color: var(--text-soft); }
+.invoice-payment-empty > svg { flex: 0 0 auto; }
+.invoice-payment-empty strong, .invoice-payment-empty span { display: block; }
+.invoice-payment-empty strong { color: var(--text); font-size: 11px; }
+.invoice-payment-empty span { margin-top: 3px; font-size: 10px; line-height: 1.4; }
 
 .report-picker { display: grid; gap: 9px; margin-bottom: 14px; }
 .report-picker .field { margin: 0; }
@@ -520,7 +567,6 @@ button.record-row:hover { background: var(--surface-soft); }
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
   .metric-grid .metric:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .record-row { padding: 11px; }
-  .record-row > .status-pill { display: none; }
   .record-end { max-width: 105px; }
   .charge-row { grid-template-columns: minmax(0, 1fr) minmax(88px, .7fr) 44px; }
   .detail-footer { display: grid; grid-template-columns: minmax(0, 1fr); }
@@ -530,6 +576,13 @@ button.record-row:hover { background: var(--surface-soft); }
   .report-totals { grid-template-columns: 1fr; }
   .report-totals > div { border-right: 0; border-bottom: 1px solid var(--line); }
   .report-totals > div:last-child { border-bottom: 0; }
+  .invoice-balance-summary { grid-template-columns: 1fr; }
+  .invoice-balance-summary > div { border-right: 0; border-bottom: 1px solid var(--line); }
+  .invoice-balance-summary > div:last-child { border-bottom: 0; }
+  .invoice-payment-columns { display: none; }
+  .invoice-payment-row { grid-template-columns: minmax(72px, .75fr) minmax(100px, 1fr) minmax(76px, .65fr); gap: 8px; }
+  .invoice-payment-row:first-child { border-top: 0; }
+  .invoice-payment-balance, .invoice-payment-row > svg { display: none; }
 }
 
 @media (max-width: 390px) {

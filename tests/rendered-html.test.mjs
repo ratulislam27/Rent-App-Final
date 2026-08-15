@@ -101,8 +101,9 @@ test("database migration enforces isolated IDs and atomic financial writes", asy
 });
 
 test("rent billing upgrade preserves monthly obligations and allocates multi-bill payments", async () => {
-  const [sql, app, service] = await Promise.all([
+  const [sql, guardSql, app, service] = await Promise.all([
     readFile(new URL("../supabase/migrations/202608140001_rent_billing.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/202608150001_rent_invoice_payment_guard.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/rentwise-app.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/data-service.ts", import.meta.url), "utf8"),
   ]);
@@ -119,12 +120,20 @@ test("rent billing upgrade preserves monthly obligations and allocates multi-bil
   assert.match(app, /Rent bills & payments/);
   assert.match(app, /Oldest due first/);
   assert.match(app, /Remaining as tenant credit/);
-  assert.match(app, /Payments applied to this bill/);
+  assert.match(app, /Every receipt allocated to this bill/);
+  assert.match(app, /Payment history/);
+  assert.match(app, /Balance due/);
+  assert.match(app, /Not counted/);
   assert.match(service, /rentBillRemaining/);
+  assert.match(service, /rentBillPaymentHistory/);
+  assert.match(service, /balanceAfter/);
   assert.match(service, /receiptAllocations/);
   assert.match(service, /product:\s*"Rento"/);
   assert.match(app, /\["Rento", "Rentwise"\]/);
   assert.doesNotMatch(sql, /'INV-'/);
+  assert.match(guardSql, /enforce_rent_invoice_payment_balance/);
+  assert.match(guardSql, /pg_advisory_xact_lock/);
+  assert.match(guardSql, /v_paid \+ new\.allocated_amount > v_bill_total/);
 });
 
 test("private profile pictures support landlords and tenants", async () => {

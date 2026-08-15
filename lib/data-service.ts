@@ -541,6 +541,34 @@ export function rentBillStatus(workspace: WorkspaceData, bill: RentPeriod, today
   return "due" as const;
 }
 
+export function rentBillPaymentHistory(workspace: WorkspaceData, bill: RentPeriod) {
+  const total = rentBillTotal(workspace, bill);
+  let paidToDate = 0;
+
+  return workspace.paymentAllocations
+    .filter((allocation) => allocation.rent_period_id === bill.id)
+    .map((allocation) => ({
+      allocation,
+      receipt: workspace.receipts.find((receipt) => receipt.id === allocation.receipt_id),
+    }))
+    .filter((entry): entry is typeof entry & { receipt: RentReceipt } => Boolean(entry.receipt))
+    .sort((left, right) =>
+      left.receipt.collection_date.localeCompare(right.receipt.collection_date) ||
+      left.receipt.created_at.localeCompare(right.receipt.created_at) ||
+      left.allocation.id.localeCompare(right.allocation.id))
+    .map(({ allocation, receipt }) => {
+      const appliedAmount = receipt.status === "valid" ? allocation.allocated_amount : 0;
+      paidToDate += appliedAmount;
+      return {
+        allocation,
+        receipt,
+        paymentMethod: workspace.paymentMethods.find((method) => method.id === receipt.payment_method_id) ?? null,
+        appliedAmount,
+        balanceAfter: Math.max(0, total - paidToDate),
+      };
+    });
+}
+
 export function receiptAllocations(workspace: WorkspaceData, receiptId: string) {
   return workspace.paymentAllocations.filter((allocation) => allocation.receipt_id === receiptId);
 }

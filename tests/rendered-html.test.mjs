@@ -57,7 +57,7 @@ test("mobile design keeps restrained geometry, fixed navigation, themes and redu
   assert.match(css, /\.theme-options/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(app, /rentwise-theme/);
-  assert.match(app, /<div className="mobile-brand">\{titleMap\[route\]\}<\/div>/);
+  assert.match(app, /className="header-page-context"/);
   assert.doesNotMatch(app, /<div className="mobile-brand"><span className="brand-mark"/);
   assert.match(app, /"light", "Light", Sun/);
   assert.match(app, /"system", "System", Monitor/);
@@ -152,4 +152,31 @@ test("private profile pictures support landlords and tenants", async () => {
   assert.match(service, /getProfileImageUrl/);
   assert.match(service, /image\\\/\(jpeg\|png\|webp\)/);
   assert.match(migration, /add column if not exists avatar_path text/);
+});
+
+test("tenant documents show payment status, signatures and compact A4 print layouts", async () => {
+  const [app, css, service, types, demo, migration] = await Promise.all([
+    readFile(new URL("../app/rentwise-app.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../lib/data-service.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/types.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/demo-data.ts", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/202608150002_document_signatures.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(app, /function DocumentHeader/);
+  assert.match(app, /BALANCE DUE/);
+  assert.match(app, /function DocumentSignatures/);
+  assert.match(app, /Tenant signature/);
+  assert.match(app, /function SignaturePicker/);
+  assert.match(app, /Document settings/);
+  assert.doesNotMatch(app, /receipt_name/);
+  assert.doesNotMatch(app, /installment/i);
+  assert.doesNotMatch(demo, /installment/i);
+  assert.match(types, /signature_path:\s*string \| null/);
+  assert.match(service, /replaceDocumentSignature/);
+  assert.match(service, /removeDocumentSignature/);
+  assert.match(migration, /add column if not exists signature_path text/);
+  assert.match(css, /@page\s*\{\s*size:\s*A4 portrait/);
+  assert.match(css, /break-inside:\s*avoid-page/);
+  assert.match(css, /\.document-extra-dense/);
 });

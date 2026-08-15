@@ -254,9 +254,9 @@ function SignaturePicker({ currentPath, service }: { currentPath: string | null;
 }
 
 function DocumentHeader({ title, id, date, status, balance, symbol }: { title: string; id: string; date: string; status: "paid" | "due" | "void"; balance?: number; symbol: string }) {
-  const label = status === "void" ? "Void" : status === "paid" ? "Paid in full" : "Balance due";
-  const StatusIcon = status === "void" ? CircleStop : status === "paid" ? CircleCheck : CalendarClock;
-  return <header className="document-header"><div className="document-identity"><span>Tenant document</span><strong>{title}</strong><small>{id} · {formatDate(date)}</small></div><div className={cn("document-status", `is-${status}`)}><span className="document-status-icon"><StatusIcon size={16} /></span><div className="document-status-copy"><span>Payment status</span><strong>{label}</strong>{status === "due" && balance !== undefined && <small>{formatMoney(balance, symbol)} outstanding</small>}</div></div></header>;
+  const label = status.toUpperCase();
+  const detail = status === "void" ? "Document voided" : status === "paid" ? "No balance due" : balance !== undefined ? `${formatMoney(balance, symbol)} outstanding` : "Payment outstanding";
+  return <header className="document-header"><div className="document-identity"><span>Tenant document</span><strong>{title}</strong><small>{id} · {formatDate(date)}</small></div><div className={cn("document-status", `is-${status}`)}><strong>{label}</strong><span>{detail}</span></div></header>;
 }
 
 function DocumentSignatures({ workspace, service }: { workspace: WorkspaceData; service: RentwiseDataService }) {
@@ -806,12 +806,10 @@ function RentBillDetail({ workspace, id, setDetail, openForm, service }: PagePro
   const property = workspace.properties.find((item) => item.id === agreement?.property_id);
   const charges = workspace.rentCharges.filter((item) => item.rent_period_id === bill.id);
   const paymentHistory = rentBillPaymentHistory(workspace, bill);
-  const status = rentBillStatus(workspace, bill, todayISO);
   const total = rentBillTotal(workspace, bill);
   const paid = rentBillPaid(workspace, bill);
   const remaining = rentBillRemaining(workspace, bill);
   const validPayments = paymentHistory.filter((entry) => entry.receipt.status === "valid");
-  const settledBy = validPayments.findLast((entry) => entry.balanceAfter <= 0.01)?.receipt.collection_date;
   return <>
     <PageHeading eyebrow={bill.display_id} title={`${monthLabel(bill.rent_month)} rent`} subtitle={`${tenant?.name} · ${property?.name}`} action={<div className="heading-actions no-print"><button className="button button-secondary" type="button" onClick={() => window.print()}><Printer size={16} />Print</button>{!bill.voided_at && <button className="button button-secondary" type="button" onClick={() => openForm("bill-charge", bill.id)}><Plus size={16} />Add charge</button>}{remaining > 0 && <button className="button button-primary" type="button" onClick={() => openForm("collection", bill.id)}><WalletCards size={16} />Receive payment</button>}</div>} />
     <article className={cn("receipt-paper", bill.voided_at && "is-void", paymentHistory.length > 6 && "document-dense", paymentHistory.length > 12 && "document-extra-dense")}>
@@ -820,10 +818,6 @@ function RentBillDetail({ workspace, id, setDetail, openForm, service }: PagePro
       <div className="receipt-party"><div><span>Bill to</span><strong>{tenant?.name}</strong><small>{tenant?.display_id} · {tenant?.phone}</small></div><div><span>For property</span><strong>{property?.name}</strong><small>{property?.display_id} · {agreement?.display_id}</small></div></div>
       <div className="receipt-lines"><div><span>Rent period</span><strong>{monthLabel(bill.rent_month)}</strong></div><div><span>Due date</span><strong>{formatDate(bill.due_date)}</strong></div><div><span>Base rent</span><strong>{formatMoney(bill.base_rent, workspace.settings.currency_symbol)}</strong></div>{charges.map((charge) => <div key={charge.id}><span>{charge.reason}</span><strong>{formatMoney(charge.amount, workspace.settings.currency_symbol)}</strong></div>)}</div>
       <div className="invoice-balance-summary"><div><span>Bill total</span><strong>{formatMoney(total, workspace.settings.currency_symbol)}</strong></div><div><span>Amount paid</span><strong className="positive-value">{formatMoney(paid, workspace.settings.currency_symbol)}</strong></div><div className={remaining > 0 ? "has-balance" : "is-settled"}><span>Balance due</span><strong>{formatMoney(remaining, workspace.settings.currency_symbol)}</strong></div></div>
-      <div className={cn("invoice-state", status === "paid" ? "is-paid" : paid > 0 ? "is-partial" : "is-unpaid")}>
-        {status === "paid" ? <CircleCheck size={18} /> : <CalendarClock size={18} />}
-        <div><strong>{status === "paid" ? "Paid in full" : paid > 0 ? "Payment in progress" : "Awaiting payment"}</strong><span>{status === "paid" && settledBy ? `Settled on ${formatDate(settledBy)} across ${validPayments.length} payment${validPayments.length === 1 ? "" : "s"}.` : paid > 0 ? `${validPayments.length} payment${validPayments.length === 1 ? "" : "s"} received; ${formatMoney(remaining, workspace.settings.currency_symbol)} is still due.` : `No payment has been applied. ${formatMoney(total, workspace.settings.currency_symbol)} is due by ${formatDate(bill.due_date)}.`}</span></div>
-      </div>
       <section className="invoice-payments"><div className="invoice-section-heading"><div><strong>Payment history</strong><span>Every receipt allocated to this bill</span></div><span>{validPayments.length} payment{validPayments.length === 1 ? "" : "s"}</span></div>{paymentHistory.length ? <div className="invoice-payment-list"><div className="invoice-payment-columns" aria-hidden="true"><span>Date</span><span>Receipt / method</span><span>Applied</span><span>Balance</span></div>{paymentHistory.map(({ allocation, receipt, paymentMethod, balanceAfter }) => <button className={cn("invoice-payment-row", receipt.status === "void" && "is-void")} type="button" key={allocation.id} onClick={() => setDetail({ kind: "receipt", id: receipt.id })}><span className="invoice-payment-date">{formatDate(receipt.collection_date)}</span><span className="invoice-payment-reference"><strong>{receipt.display_id}</strong><small>{paymentMethod?.name ?? "Method not recorded"}{receipt.status === "void" ? " · Void" : ""}</small></span><span className="invoice-payment-amount"><strong>{formatMoney(allocation.allocated_amount, workspace.settings.currency_symbol)}</strong>{receipt.status === "void" && <small>Not counted</small>}</span><span className="invoice-payment-balance"><strong>{formatMoney(balanceAfter, workspace.settings.currency_symbol)}</strong><small>balance</small></span><ChevronRight className="no-print" size={15} /></button>)}</div> : <div className="invoice-payment-empty"><WalletCards size={20} /><div><strong>No payments received</strong><span>Payments will appear here as soon as a receipt is allocated to this bill.</span></div></div>}</section>
       <DocumentSignatures workspace={workspace} service={service} />
       <footer className="receipt-footer"><span>{workspace.settings.receipt_phone}</span><span>{workspace.settings.receipt_address}</span></footer>

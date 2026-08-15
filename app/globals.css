@@ -85,7 +85,6 @@ h1, h2, h3,
 .signature-picker-copy > strong,
 .schedule-callout strong,
 .document-identity > strong,
-.invoice-state strong,
 .invoice-section-heading strong,
 .invoice-payment-empty strong,
 .document-section-title strong { text-transform: capitalize; }
@@ -150,10 +149,10 @@ input[type="file"] { padding: 8px; }
 .app-main { width: min(100%, 1120px); max-width: 100%; min-width: 0; margin: 0 auto; padding: 26px 20px calc(var(--nav-height) + 28px); }
 .app-header { position: sticky; z-index: 15; top: 0; display: flex; align-items: center; justify-content: space-between; min-height: 62px; padding: env(safe-area-inset-top) 18px 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 88%, transparent); background: color-mix(in srgb, var(--bg) 90%, transparent); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
 .header-page-context { min-width: 0; font-size: 16px; font-weight: 640; letter-spacing: -.03em; }
-.header-back-button { display: inline-flex; align-items: center; gap: 3px; min-height: 44px; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px 8px 9px; color: var(--blue); background: var(--surface); font-size: 14px; font-weight: 610; letter-spacing: -.02em; cursor: pointer; }
-.header-back-button svg { flex: 0 0 auto; }
-.header-back-button:hover { color: var(--blue-hover); background: var(--blue-soft); }
-.header-back-button:focus-visible { border-color: var(--blue); outline: 2px solid var(--blue); outline-offset: 2px; }
+.header-back-button { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; border: 0; padding: 8px 5px 8px 1px; color: var(--blue); background: transparent; font-size: 16px; font-weight: 620; letter-spacing: -.025em; cursor: pointer; }
+.header-back-button svg { flex: 0 0 auto; width: 21px; height: 21px; }
+.header-back-button:hover { color: var(--blue-hover); }
+.header-back-button:focus-visible { border-radius: 4px; outline: 2px solid var(--blue); outline-offset: 2px; }
 .brand-lockup { font-size: 17px; font-weight: 680; letter-spacing: -.035em; }
 
 .desktop-nav { display: none; }
@@ -430,19 +429,13 @@ button.void-row:hover { background: var(--red-soft); }
 .document-identity > span { color: var(--text-soft); font-size: 9px; font-weight: 650; text-transform: uppercase; letter-spacing: .1em; }
 .document-identity > strong { margin-top: 5px; font-size: clamp(22px, 5vw, 32px); font-weight: 720; letter-spacing: -.045em; }
 .document-identity > small { margin-top: 6px; color: var(--text-soft); font-family: var(--font-geist-mono), monospace; font-size: 10px; }
-.document-status { display: flex; align-items: center; flex: 0 0 auto; gap: 10px; min-width: 164px; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; background: var(--surface-soft); text-align: left; }
-.document-status-icon { display: grid; place-items: center; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; }
-.document-status-copy { min-width: 0; }
-.document-status-copy > span, .document-status-copy > strong, .document-status-copy > small { display: block; }
-.document-status-copy > span { color: var(--text-faint); font-size: 8px; font-weight: 620; line-height: 1.2; text-transform: uppercase; letter-spacing: .07em; }
-.document-status-copy > strong { margin-top: 2px; font-size: 13px; line-height: 1.2; letter-spacing: -.018em; }
-.document-status-copy > small { margin-top: 3px; color: var(--text-soft); font-size: 10px; line-height: 1.2; }
-.document-status.is-paid .document-status-icon { color: var(--green); background: var(--green-soft); }
-.document-status.is-paid .document-status-copy > strong { color: var(--green); }
-.document-status.is-due .document-status-icon { color: var(--amber); background: var(--amber-soft); }
-.document-status.is-due .document-status-copy > strong { color: var(--amber); }
-.document-status.is-void .document-status-icon { color: var(--red); background: var(--red-soft); }
-.document-status.is-void .document-status-copy > strong { color: var(--red); }
+.document-status { flex: 0 0 auto; min-width: 142px; border-top: 2px solid currentColor; border-bottom: 1px solid currentColor; padding: 8px 2px 7px; text-align: right; }
+.document-status > strong, .document-status > span { display: block; }
+.document-status > strong { font-size: 20px; font-weight: 760; line-height: 1; text-transform: uppercase; letter-spacing: .16em; }
+.document-status > span { margin-top: 7px; color: var(--text-soft); font-size: 10px; line-height: 1.2; }
+.document-status.is-paid { color: var(--green); }
+.document-status.is-due { color: var(--amber); }
+.document-status.is-void { color: var(--red); }
 .receipt-party { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--line); }
 .receipt-party span, .receipt-party strong, .receipt-party small { display: block; }
 .receipt-party span { color: var(--text-soft); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
@@ -466,16 +459,6 @@ button.void-row:hover { background: var(--red-soft); }
 .invoice-balance-summary strong { overflow: hidden; margin-top: 6px; font-size: clamp(15px, 3vw, 20px); letter-spacing: -.025em; text-overflow: ellipsis; white-space: nowrap; }
 .invoice-balance-summary .has-balance strong { color: var(--red); }
 .invoice-balance-summary .is-settled strong { color: var(--green); }
-.invoice-state { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 11px 12px; background: var(--surface-soft); }
-.invoice-state > svg { flex: 0 0 auto; }
-.invoice-state strong, .invoice-state span { display: block; }
-.invoice-state strong { font-size: 11px; }
-.invoice-state span { margin-top: 3px; color: var(--text-soft); font-size: 10px; line-height: 1.4; }
-.invoice-state.is-paid { border-color: color-mix(in srgb, var(--green) 24%, var(--line)); background: var(--green-soft); }
-.invoice-state.is-paid > svg, .invoice-state.is-paid > div > strong { color: var(--green); }
-.invoice-state.is-partial { border-color: color-mix(in srgb, var(--amber) 24%, var(--line)); background: var(--amber-soft); }
-.invoice-state.is-partial > svg, .invoice-state.is-partial > div > strong { color: var(--amber); }
-.invoice-state.is-unpaid > svg { color: var(--text-soft); }
 .invoice-payments { margin-top: 28px; }
 .invoice-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
 .invoice-section-heading strong, .invoice-section-heading span { display: block; }
@@ -659,7 +642,7 @@ button.void-row:hover { background: var(--red-soft); }
   .invoice-payment-balance, .invoice-payment-row > svg { display: none; }
   .signature-picker { grid-template-columns: 1fr; }
   .document-header { align-items: stretch; gap: 12px; }
-  .document-status { min-width: 154px; padding: 9px 10px; }
+  .document-status { min-width: 134px; }
   .receipt-party { grid-template-columns: 1fr; gap: 14px; }
   .receipt-balance-summary strong { font-size: 17px; }
   .document-signatures { gap: 24px; }
@@ -697,11 +680,10 @@ button.void-row:hover { background: var(--red-soft); }
   .document-header { padding-bottom: 12px; }
   .document-identity > strong { margin-top: 2px; font-size: 23px; }
   .document-identity > small { margin-top: 3px; }
-  .document-status { min-width: 146px; gap: 8px; padding: 6px 8px; }
-  .document-status-icon { width: 26px; height: 26px; }
-  .document-status-copy > span { font-size: 7px; }
-  .document-status-copy > strong { margin-top: 1px; font-size: 10px; }
-  .document-status-copy > small { margin-top: 1px; font-size: 8px; }
+  .document-status { min-width: 126px; padding: 5px 1px; }
+  .document-status.is-paid, .document-status.is-due, .document-status.is-void { color: #111; }
+  .document-status > strong { font-size: 15px; }
+  .document-status > span { margin-top: 4px; font-size: 8px; }
   .receipt-party { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 11px 0; }
   .receipt-party strong { margin-top: 3px; font-size: 12px; }
   .receipt-party small { margin-top: 1px; font-size: 9px; }
@@ -710,8 +692,6 @@ button.void-row:hover { background: var(--red-soft); }
   .invoice-balance-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 9px; }
   .invoice-balance-summary > div { border-right: 1px solid var(--line); border-bottom: 0; padding: 8px 10px; }
   .invoice-balance-summary strong { margin-top: 3px; font-size: 15px; }
-  .invoice-state { margin-top: 7px; padding: 6px 8px; }
-  .invoice-state span { margin-top: 1px; font-size: 8px; }
   .invoice-payments, .receipt-application { margin-top: 12px; }
   .invoice-section-heading, .document-section-title { padding-bottom: 5px; }
   .invoice-payment-columns { padding: 5px 0 3px; }
@@ -728,7 +708,6 @@ button.void-row:hover { background: var(--red-soft); }
   .document-signature > strong { margin-top: 4px; font-size: 9px; }
   .receipt-footer { margin-top: 10px; padding-top: 7px; font-size: 8px; }
   .document-dense .invoice-payment-row { min-height: 28px; padding: 1px 0; }
-  .document-dense .invoice-state { display: none; }
   .document-extra-dense { font-size: 9px; }
   .document-extra-dense .invoice-payment-row { min-height: 23px; }
   .document-extra-dense .document-signatures { margin-top: 10px; }

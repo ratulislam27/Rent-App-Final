@@ -340,7 +340,7 @@ function AppearanceToggle({ theme, onToggle, className }: { theme: ResolvedTheme
   return <button className={cn("appearance-toggle", className)} type="button" onClick={onToggle} aria-label={label} title={label}>{theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}</button>;
 }
 
-function AppHeader({ workspace, service, route, theme, onToggleTheme, onSettings, onAdmin, onSignOut }: { workspace: WorkspaceData; service: RentwiseDataService; route: Route; theme: ResolvedTheme; onToggleTheme: () => void; onSettings: () => void; onAdmin: () => void; onSignOut: () => void }) {
+function AppHeader({ workspace, service, route, theme, onBack, onToggleTheme, onSettings, onAdmin, onSignOut }: { workspace: WorkspaceData; service: RentwiseDataService; route: Route; theme: ResolvedTheme; onBack?: () => void; onToggleTheme: () => void; onSettings: () => void; onAdmin: () => void; onSignOut: () => void }) {
   const titleMap: Record<Route, string> = { home: "Home", properties: "Properties", tenants: "Tenants", collections: "Collections", more: "More", agreements: "Agreements", expenses: "Expenses", reports: "Reports", settings: "Settings", admin: "Administrator" };
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -361,7 +361,7 @@ function AppHeader({ workspace, service, route, theme, onToggleTheme, onSettings
     };
   }, [menuOpen]);
 
-  return <header className="app-header"><div className="mobile-brand">{titleMap[route]}</div><div className="desktop-page-title">{titleMap[route]}</div><div className="header-controls"><AppearanceToggle theme={theme} onToggle={onToggleTheme} /><div className="account-menu-wrap" ref={menuRef}><button className="account-button" type="button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-haspopup="menu"><ProfileAvatar name={workspace.profile.full_name} path={workspace.profile.avatar_path} service={service} /><span className="account-copy"><strong>{workspace.profile.full_name}</strong><small>{workspace.profile.email}</small></span></button>{menuOpen && <div className="account-popover" role="menu"><button role="menuitem" type="button" onClick={() => { setMenuOpen(false); onSettings(); }}><Settings size={17} />Settings</button>{workspace.profile.is_admin && <button role="menuitem" type="button" onClick={() => { setMenuOpen(false); onAdmin(); }}><ShieldCheck size={17} />Administrator</button>}<button role="menuitem" type="button" onClick={onSignOut}><LogOut size={17} />Sign out</button></div>}</div></div></header>;
+  return <header className="app-header"><div className="header-page-context">{onBack ? <button className="header-back-button" type="button" onClick={onBack} aria-label={`Back to ${titleMap[route]}`}><ChevronLeft size={20} /><span>{titleMap[route]}</span></button> : titleMap[route]}</div><div className="header-controls"><AppearanceToggle theme={theme} onToggle={onToggleTheme} /><div className="account-menu-wrap" ref={menuRef}><button className="account-button" type="button" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-haspopup="menu"><ProfileAvatar name={workspace.profile.full_name} path={workspace.profile.avatar_path} service={service} /><span className="account-copy"><strong>{workspace.profile.full_name}</strong><small>{workspace.profile.email}</small></span></button>{menuOpen && <div className="account-popover" role="menu"><button role="menuitem" type="button" onClick={() => { setMenuOpen(false); onSettings(); }}><Settings size={17} />Settings</button>{workspace.profile.is_admin && <button role="menuitem" type="button" onClick={() => { setMenuOpen(false); onAdmin(); }}><ShieldCheck size={17} />Administrator</button>}<button role="menuitem" type="button" onClick={onSignOut}><LogOut size={17} />Sign out</button></div>}</div></div></header>;
 }
 
 export default function RentwiseApp() {
@@ -501,10 +501,10 @@ export default function RentwiseApp() {
   return <div className="app-shell">
     <Navigation route={route} onNavigate={navigate} />
     <div className="app-column">
-      <AppHeader workspace={workspace} service={service} route={route} theme={themeState.resolved} onToggleTheme={() => chooseTheme(themeState.resolved === "dark" ? "light" : "dark")} onSettings={() => navigate("settings")} onAdmin={() => navigate("admin")} onSignOut={signOut} />
+      <AppHeader workspace={workspace} service={service} route={route} theme={themeState.resolved} onBack={detail ? () => setDetail(null) : undefined} onToggleTheme={() => chooseTheme(themeState.resolved === "dark" ? "light" : "dark")} onSettings={() => navigate("settings")} onAdmin={() => navigate("admin")} onSignOut={signOut} />
       {service.isDemo && <div className="demo-banner"><Info size={15} /><span>Sample workspace · changes reset when the page reloads</span></div>}
       {error && <div className="global-alert"><CircleAlert size={17} /><span>{error}</span><button type="button" onClick={() => setError("")}><X size={16} /></button></div>}
-      <main className="app-main"><div className="page-transition" key={`${route}-${detail?.kind ?? "list"}-${detail?.id ?? ""}`}>{detail && <button className="back-button" type="button" onClick={() => setDetail(null)}><ChevronLeft size={18} />Back</button>}{page}{detail && detail.kind !== "bill" && <AttachmentList workspace={workspace} service={service} entityType={detail.kind} entityId={detail.id} onError={setError} />}</div></main>
+      <main className="app-main"><div className="page-transition" key={`${route}-${detail?.kind ?? "list"}-${detail?.id ?? ""}`}>{page}{detail && detail.kind !== "bill" && <AttachmentList workspace={workspace} service={service} entityType={detail.kind} entityId={detail.id} onError={setError} />}</div></main>
     </div>
     {form === "property" && <PropertyForm workspace={workspace} service={service} targetId={formTarget} onClose={closeForm} mutate={mutate} />}
     {form === "tenant" && <TenantForm workspace={workspace} service={service} targetId={formTarget} onClose={closeForm} mutate={mutate} />}
